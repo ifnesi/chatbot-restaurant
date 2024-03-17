@@ -1,0 +1,51 @@
+{% extends 'header.html' %}
+
+{% block header %}
+<script src="{{ url_for('static', filename='js/main.js') }}?v=1"></script>
+{% endblock %}
+
+{% block content %}
+<!-- Fixed navbar -->
+<header>
+    <nav class="navbar navbar-expand-lg navbar-light fixed-top bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#"><img src="{{ url_for('static', filename='images/favicon.png') }}" height="44px"></img>&nbsp;{{ restaurantName }}</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Chat Menu</a>
+                        <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                            <li><a class="dropdown-item disabled" href="#">{{session.customerName}}</a></li>
+                            <li><a class="dropdown-item" href="/logout">Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+</header>
+
+<!-- Begin page content -->
+<main class="flex-shrink-0">
+    <div class="container h-100">
+        <div class="overflow-auto h-100" id="chat-history"></div>
+    </div>
+</main>
+
+<!-- Footer -->
+<footer class="footer mt-auto py-3 bg-light">
+    <div class="container">
+        <div class="row">
+            <div class="col-10">
+                <input type="text" class="form-control" name="customerMessage" id="customerMessage" placeholder="Message..." autocomplete="off" onkeydown="send_message_key();" required>
+            </div>
+            <div class="col-2">
+                <button class="btn btn-warning" onclick="send_message(0);">Send</button>
+            </div>
+        </div>
+    </div>
+</footer>
+{% endblock %}

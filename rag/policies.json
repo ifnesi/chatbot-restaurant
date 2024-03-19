@@ -35,11 +35,11 @@
         },
         "alcohol": {
             "age restriction": 21,
-            "description": "Alcoholic beverages are only available for guests 21 years and older with valid ID. No exceptions"
+            "description": "Alcoholic beverages are only available for guests 21 years and older with valid ID. No exceptions."
         },
         "takeout": {
             "available": true,
-            "description": "Takeout service is available during our regular operating hours. Orders can be placed in person, over the phone, or through our website."
+            "description": "Takeout service is available during our regular operating hours. Orders can be placed in person, however for those moments when convenience is key, we've partnered with premier delivery services including Deliveroo, Uber Eats, and JustEat."
         },
         "privacy": {
             "description": "We respect your privacy and are committed to protecting the personal information you share with us. Our privacy policy is available on our website or upon request."

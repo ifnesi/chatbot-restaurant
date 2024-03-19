@@ -2,6 +2,8 @@ import os
 import glob
 import json
 import uuid
+import time
+import random
 import logging
 import datetime
 
@@ -85,6 +87,7 @@ def do_login():
     fake = Faker()
     request_form = dict(request.form)
     session["waiterName"] = fake.name()
+    session["waiterAge"] = random.randint(22, 53)
     session["customerID"] = uuid.uuid4().hex
     session["customerName"] = request_form.get("customerName", "Anonymous").strip()[:32].strip()
     session["ofLegalAge"] = request_form.get("ofLegalAge") == "yes"
@@ -106,20 +109,17 @@ def do_login():
 @app.route("/send-message", methods=["POST"])
 @login_required
 def send_message():
+    time.sleep(3)
     result = {
-        "customer": "",
         "waiter": "",
-        "customerName": session["customerName"],
-        "waiterName": session["waiterName"],
     }
     try:
         request_form = request.get_json()
         initialMessage = request_form.get("initialMessage")
         customerMessage = request_form.get("customerMessage")
         if initialMessage:
-            result["waiter"] = f"""Hi {session["customerName"]}, my name is {session["waiterName"]} and I will be your waiter today. How can I help you?"""
+            result["waiter"] = f"""Hi <b>{session["customerName"]}</b>, my name is <b>{session["waiterName"]}</b> and I will be your waiter today. How can I help you?"""
         elif customerMessage:
-            result["customer"] = customerMessage
             result["waiter"] = "Thank you for your message!"
     except Exception as err:
         logging.error(f"{err}")

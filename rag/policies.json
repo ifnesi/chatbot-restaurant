@@ -1,63 +1,18 @@
 {
-    "restaurant policies": {
-        "pets": {
-            "allowed": false,
-            "description": "For the comfort and safety of all our guests, pets are not allowed within the restaurant premises, with the exception of service animals."
-        },
-        "smoking": {
-            "allowed inside": false,
-            "allowed outside": true,
-            "description": "Smoking is prohibited inside the restaurant. A designated smoking area is available outside for those who wish to smoke."
-        },
-        "reservation": {
-            "required": true,
-            "description": "Reservations are recommended to ensure seating availability. We accept reservations up to one month in advance through phone, our website, or selected booking platforms."
-        },
-        "cancellation": {
-            "timeframe": "24 hours",
-            "description": "We kindly request that any cancellations or changes to your reservation be made at least 24 hours in advance to avoid a cancellation fee."
-        },
-        "dress code": {
-            "required": false,
-            "description": "We do not enforce a strict dress code. However, we encourage smart casual attire for our guests."
-        },
-        "child": {
-            "children welcome": true,
-            "description": "Children of all ages are welcome. We offer a children's menu and high chairs are available upon request."
-        },
-        "payment": {
-            "accepted methods": [
-                "Cash",
-                "Credit/Debit Cards",
-                "Mobile Payments"
-            ],
-            "description": "We accept cash, most major credit/debit cards, and mobile payments. Please note that we do not accept checks."
-        },
-        "alcohol": {
-            "age restriction": 21,
-            "description": "Alcoholic beverages are only available for guests 21 years and older with valid ID. No exceptions."
-        },
-        "takeout": {
-            "available": true,
-            "description": "Takeout service is available during our regular operating hours. Orders can be placed in person, however for those moments when convenience is key, we've partnered with premier delivery services including Deliveroo, Uber Eats, and JustEat."
-        },
-        "privacy": {
-            "description": "We respect your privacy and are committed to protecting the personal information you share with us. Our privacy policy is available on our website or upon request."
-        },
-        "meal discount": {
-            "description": "Enjoy a 10% discount on your meal when you indulge in a full dining experience at our restaurant, including a starter, main course, and dessert. This special offer is our way of thanking you for choosing to savor a complete culinary journey with us. Please note, the discount applies exclusively to the food portion of your bill."
-        },
-        "drink discount": {
-            "description": "No discount offered on any beverage."
-        },
-        "service tax": {
-            "description": "A service tax of 12.5% will be applied to the total bill. Please note that this service tax is not a tip or gratuity for our staff. While tipping is not required, it is appreciated and left entirely at the discretion of our guests. Tips are distributed directly to our service staff in recognition of their hard work and dedication to your dining experience."
-        },
-        "leadtime": {
-            "description": "Our dishes are freshly prepared with your satisfaction in mind. Typically, starters are ready within 5 minutes, main courses take between 15 to 25 minutes, and desserts are served in about 5 minutes. To ensure the highest quality, each dish will be delivered to your table as soon as it's ready."
-        },
-        "currency": {
-            "description": "We embrace simplicity and efficiency, which is why we exclusively accept British Pounds Sterling (GBP) for all transactions. This policy allows us to streamline our operations and ensure a smooth, hassle-free payment process for our guests, whether you're indulging in a delicious three-course meal or enjoying a casual drink. By focusing on a single currency, we can dedicate more time to what truly matters—providing you with an exceptional dining experience marked by our happy atmosphere, culinary innovation, and excellence in customer service."
-        }
-    }
+    "pets": "For the comfort and safety of all our customers, pets are not allowed within the restaurant premises, with the exception of service animals",
+    "smoking": "Smoking is prohibited inside the restaurant. A designated smoking area is available outside for those who wish to smoke",
+    "reservation": "Reservations are recommended to ensure seating availability. We accept reservations up to one month in advance through phone, our website, or selected booking platforms",
+    "cancellation": "We kindly request that any cancellations or changes to the reservations be made at least 24 hours in advance to avoid a cancellation fee",
+    "dress code": "We do not enforce a strict dress code. However, we encourage smart casual attire for our customers",
+    "child": "Children of all ages are welcome. We offer a children's menu and high chairs are available upon request",
+    "payment": "We accept cash, most major credit/debit cards, and mobile payments. Please note that we do not accept checks",
+    "takeout": "Takeout service is available during our regular operating hours. Orders can be placed in person, however for those moments when convenience is key, we've partnered with premier delivery services including Deliveroo, Uber Eats, and JustEat",
+    "privacy":"We respect our customers privacy and are committed to protecting the personal information you share with us. Our privacy policy is available on our website or upon request",
+    "meal discount": "Enjoy a 10% discount when the customer orders at least one starter, one main course, and one dessert. This special offer is our way of thanking you for choosing to savor a complete culinary journey with us. Please note, the discount applies exclusively to the food portion of your bill",
+    "drink discount": "No discount offered on any beverage",
+    "service tax": "A service tax of 12.5% will be applied to the total bill. Please note that this service tax is not a tip or gratuity for our staff. While tipping is not required, it is appreciated and left entirely at the discretion of our guests. Tips are distributed directly to our service staff in recognition of their hard work and dedication to your dining experience",
+    "leadtime": "Our dishes are freshly prepared with your satisfaction in mind. Typically, starters are ready within 5 minutes, main courses take between 15 to 25 minutes, and desserts are served in about 5 minutes. To ensure the highest quality, each dish will be delivered to your table as soon as it's ready",
+    "currency": "We embrace simplicity and efficiency, which is why we exclusively accept British Pounds Sterling (GBP) for all transactions. This policy allows us to streamline our operations and ensure a smooth, hassle-free payment process for our guests, whether you're indulging in a delicious three-course meal or enjoying a casual drink. By focusing on a single currency, we can dedicate more time to what truly matters—providing you with an exceptional dining experience marked by our happy atmosphere, culinary innovation, and excellence in customer service",
+    "alcohol": "You as an AI assistant must never serve or recommend alcoholic drinks for customers 21 years and older with valid ID. No exceptions",
+    "allergy": "You as an AI assistant must never serve or recommend any food on our menu where the customer has any allergy to it"
 }

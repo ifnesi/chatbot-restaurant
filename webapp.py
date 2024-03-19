@@ -2,10 +2,12 @@ import os
 import glob
 import json
 import uuid
-import time
-import random
 import logging
 import datetime
+
+from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI
+from langchain.schema import SystemMessage, HumanMessage
 
 from faker import Faker
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify
@@ -18,6 +20,7 @@ from flask_login import (
     logout_user,
 )
 
+from utils import initial_prompt
 
 ##################
 # Webapp (Flask) #
@@ -34,11 +37,18 @@ login_manager.login_view = "login"
 log = logging.getLogger("werkzeug")
 log.setLevel(logging.WARNING)
 
+# Load env variables
+load_dotenv('./.env_api_keys')
+
+# Global variables
+chatSessions = dict()
+chatMessages = dict()
 RAG_DATA = dict()
 for file in glob.glob(os.path.join("rag", "*.json")):
     with open(file, "r") as f:
         key = os.path.splitext(os.path.split(file)[-1])[0]
         RAG_DATA[key] = json.loads(f.read())
+
 
 ###########
 # Classes #
@@ -54,10 +64,13 @@ class User(UserMixin):
 #################
 @app.errorhandler(404)
 def page_not_found(e):
-    return render_template(
-        "page_not_found.html",
-        title="Page Not Found",
-    ), 404
+    return (
+        render_template(
+            "page_not_found.html",
+            title="Page Not Found",
+        ),
+        404,
+    )
 
 
 @login_manager.unauthorized_handler
@@ -84,19 +97,30 @@ def login():
 
 @app.route("/login", methods=["POST"])
 def do_login():
+    # Session variables
     fake = Faker()
     request_form = dict(request.form)
     session["waiterName"] = fake.name()
-    session["waiterAge"] = random.randint(22, 53)
     session["customerID"] = uuid.uuid4().hex
-    session["customerName"] = request_form.get("customerName", "Anonymous").strip()[:32].strip()
+    session["customerName"] = (
+        request_form.get("customerName", "Anonymous").strip()[:32].strip()
+    )
     session["ofLegalAge"] = request_form.get("ofLegalAge") == "yes"
     session["restaurantName"] = RAG_DATA["restaurant"].get("name")
     request_form.pop("customerName", None)
     request_form.pop("ofLegalAge", None)
-    session["allergies"] = list()
+    session["allergens"] = list()
     for key in request_form.keys():
-        session["allergies"].append(key)
+        session["allergens"].append(key)
+    if len(session["allergens"]) == 0:
+        session["allergens"].append("Nothing")
+
+    # LLM Session
+    chatSessions[session["customerID"]] = ChatOpenAI(
+        model="gpt-3.5-turbo-16k",
+    )
+
+    # Login user
     login_user(
         User(session["customerID"]),
         duration=datetime.timedelta(hours=1),
@@ -105,11 +129,9 @@ def do_login():
     return redirect(url_for("chatbot"))
 
 
-
 @app.route("/send-message", methods=["POST"])
 @login_required
 def send_message():
-    time.sleep(3)
     result = {
         "waiter": "",
     }
@@ -118,9 +140,15 @@ def send_message():
         initialMessage = request_form.get("initialMessage")
         customerMessage = request_form.get("customerMessage")
         if initialMessage:
-            result["waiter"] = f"""Hi <b>{session["customerName"]}</b>, my name is <b>{session["waiterName"]}</b> and I will be your waiter today. How can I help you?"""
+            chatMessages[session["customerID"]] = [
+                SystemMessage(content=initial_prompt(RAG_DATA, session["waiterName"])),
+                HumanMessage(content=f"""Please greet this new customer and show the main menu. Customer name is {session["customerName"]}, customer is {"on or above 21 years old" if session["ofLegalAge"] else "under 21 years old"} and is allergic to: {", ".join(session["allergens"])}"""),
+            ]
         elif customerMessage:
-            result["waiter"] = "Thank you for your message!"
+            chatMessages[session["customerID"]].append(HumanMessage(customerMessage))
+        response = chatSessions[session["customerID"]].invoke(chatMessages[session["customerID"]])
+        result["waiter"] = response.content
+        chatMessages[session["customerID"]].append(response)
     except Exception as err:
         logging.error(f"{err}")
         result["waiter"] = "Sorry, something went wrong! Please try again"
@@ -130,6 +158,8 @@ def send_message():
 @app.route("/logout", methods=["GET"])
 @login_required
 def logout():
+    chatSessions.pop(session["customerID"], None)
+    chatMessages.pop(session["customerID"], None)
     logout_user()
     session.clear()
     return redirect(url_for("login"))
@@ -143,7 +173,6 @@ def chatbot():
         restaurantName=RAG_DATA["restaurant"].get("name"),
         title="Talk to us!",
     )
-
 
 
 ########

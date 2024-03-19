@@ -3,7 +3,7 @@ var customerName;
 
 $( document ).ready(function() {
     // Alert when trying to leave/refresh
-    $(window).on("unload", reaload_alert());
+    //$(window).on("unload", reaload_alert());
 
     // Bind ENTER to message box
     $("#customerMessage").on('keyup', function (event) {

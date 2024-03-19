@@ -1,328 +1,274 @@
 {
-    "menu": {
-        "starters": {
-            "tomato_bruschetta": {
-                "name": "Tomato Bruschetta",
-                "shortDescription": "Grilled bread topped with fresh tomatoes, garlic, and basil.",
-                "nutritionalInformation": {
-                    "calories": "120 kcal",
-                    "fat": "4g",
-                    "carbohydrates": "18g",
-                    "protein": "4g"
-                },
-                "allergies": "Gluten",
-                "price": 6.00
-            },
-            "chicken_wings": {
-                "name": "Chicken Wings",
-                "shortDescription": "Spicy marinated chicken wings, served with blue cheese dip.",
-                "nutritionalInformation": {
-                    "calories": "290 kcal",
-                    "fat": "18g",
-                    "carbohydrates": "5g",
-                    "protein": "22g"
-                },
-                "allergies": "Dairy",
-                "price": 8.00
-            },
-            "crispy_calamari": {
-                "name": "Crispy Calamari",
-                "shortDescription": "Lightly breaded calamari, fried and served with a side of marinara sauce.",
-                "nutritionalInformation": {
-                    "calories": "310 kcal",
-                    "fat": "16g",
-                    "carbohydrates": "35g",
-                    "protein": "15g"
-                },
-                "allergies": "Gluten, Shellfish",
-                "price": 9.00
-            },
-            "stuffed_mushrooms": {
-                "name": "Stuffed Mushrooms",
-                "shortDescription": "Mushrooms stuffed with a garlic herb cream cheese mixture, then baked.",
-                "nutritionalInformation": {
-                    "calories": "150 kcal",
-                    "fat": "9g",
-                    "carbohydrates": "10g",
-                    "protein": "5g"
-                },
-                "allergies": "Dairy",
-                "price": 7.00
-            }
+    "starters": {
+        "tomato_bruschetta": {
+            "name": "Tomato Bruschetta",
+            "description": "Grilled bread topped with fresh tomatoes, garlic, and basil",
+            "calories": "120 kcal",
+            "fat": "4g",
+            "carbohydrates": "18g",
+            "protein": "4g",
+            "allergens": "Gluten",
+            "price": 6
         },
-        "mains": {
-            "beef_burger": {
-                "name": "Beef Burger",
-                "shortDescription": "Grass-fed beef patty with lettuce, tomato, and cheese, served on a brioche bun.",
-                "nutritionalInformation": {
-                    "calories": "600 kcal",
-                    "fat": "30g",
-                    "carbohydrates": "40g",
-                    "protein": "40g"
-                },
-                "allergies": "Gluten, Dairy",
-                "price": 12.00
-            },
-            "vegetable_pasta": {
-                "name": "Vegetable Pasta",
-                "shortDescription": "Whole wheat pasta tossed with seasonal vegetables in a light tomato sauce.",
-                "nutritionalInformation": {
-                    "calories": "420 kcal",
-                    "fat": "12g",
-                    "carbohydrates": "68g",
-                    "protein": "14g"
-                },
-                "allergies": "Gluten",
-                "price": 11.00
-            },
-            "grilled_salmon": {
-                "name": "Grilled Salmon",
-                "shortDescription": "Salmon fillet, grilled and served with a lemon dill sauce and steamed vegetables.",
-                "nutritionalInformation": {
-                    "calories": "520 kcal",
-                    "fat": "28g",
-                    "carbohydrates": "20g",
-                    "protein": "50g"
-                },
-                "allergies": "Fish",
-                "price": 15.00
-            },
-            "quinoa_salad": {
-                "name": "Quinoa Salad",
-                "shortDescription": "A hearty salad with quinoa, mixed greens, avocados, tomatoes, cucumbers, and a lemon vinaigrette.",
-                "nutritionalInformation": {
-                    "calories": "350 kcal",
-                    "fat": "14g",
-                    "carbohydrates": "45g",
-                    "protein": "12g"
-                },
-                "allergies": "None",
-                "price": 10.00
-            }
+        "chicken_wings": {
+            "name": "Chicken Wings",
+            "description": "Spicy marinated chicken wings, served with blue cheese dip",
+            "calories": "290 kcal",
+            "fat": "18g",
+            "carbohydrates": "5g",
+            "protein": "22g",
+            "allergens": "Dairy",
+            "price": 8
         },
-        "alcoholicDrinks": {
-            "craft_beer": {
-                "name": "Craft Beer",
-                "shortDescription": "Locally brewed IPA with citrus and pine notes.",
-                "nutritionalInformation": {
-                    "calories": "180 kcal",
-                    "fat": "0g",
-                    "carbohydrates": "14g",
-                    "protein": "2g"
-                },
-                "allergies": "Gluten",
-                "price": 5.00
-            },
-            "red_wine": {
-                "name": "Glass of Red Wine (125 ml)",
-                "shortDescription": "Medium-bodied red wine with flavors of cherry and blackberry.",
-                "nutritionalInformation": {
-                    "calories": "125 kcal",
-                    "fat": "0g",
-                    "carbohydrates": "4g",
-                    "protein": "0g"
-                },
-                "allergies": "Sulfites",
-                "price": 7.00
-            },
-            "gin_tonic": {
-                "name": "Gin Tonic",
-                "shortDescription": "Classic gin and tonic with a lime wedge for garnish.",
-                "nutritionalInformation": {
-                    "calories": "120 kcal",
-                    "fat": "0g",
-                    "carbohydrates": "4g",
-                    "protein": "0g"
-                },
-                "allergies": "None",
-                "price": 8.00
-            },
-            "white_wine": {
-                "name": "Glass of White Wine (125 ml)",
-                "shortDescription": "Crisp and refreshing white wine with hints of apple and pear.",
-                "nutritionalInformation": {
-                    "calories": "120 kcal",
-                    "fat": "0g",
-                    "carbohydrates": "3g",
-                    "protein": "0g"
-                },
-                "allergies": "Sulfites",
-                "price": 7.00
-            }
+        "crispy_calamari": {
+            "name": "Crispy Calamari",
+            "description": "Lightly breaded calamari, fried and served with a side of marinara sauce",
+            "calories": "310 kcal",
+            "fat": "16g",
+            "carbohydrates": "35g",
+            "protein": "15g",
+            "allergens": "Gluten, Shellfish",
+            "price": 9
         },
-        "nonAlcoholicDrinks": {
-            "lemonade": {
-                "name": "Lemonade",
-                "shortDescription": "Freshly squeezed lemonade, sweetened with a touch of honey.",
-                "nutritionalInformation": {
-                    "calories": "120 kcal",
-                    "fat": "0g",
-                    "carbohydrates": "32g",
-                    "protein": "0g"
-                },
-                "allergies": "None",
-                "price": 3.00
-            },
-            "iced_tea": {
-                "name": "Iced Tea",
-                "shortDescription": "Cold-brewed black tea, served over ice with a lemon wedge.",
-                "nutritionalInformation": {
-                    "calories": "90 kcal",
-                    "fat": "0g",
-                    "carbohydrates": "24g",
-                    "protein": "0g"
-                },
-                "allergies": "None",
-                "price": 2.50
-            },
-            "fruit_smoothie": {
-                "name": "Fruit Smoothie",
-                "shortDescription": "A blend of seasonal fruits, yogurt, and honey.",
-                "nutritionalInformation": {
-                    "calories": "200 kcal",
-                    "fat": "2g",
-                    "carbohydrates": "40g",
-                    "protein": "5g"
-                },
-                "allergies": "Dairy",
-                "price": 4.50
-            },
-            "sparkling_water": {
-                "name": "Sparkling Water (500 ml)",
-                "shortDescription": "Naturally carbonated spring water with a choice of lemon or lime.",
-                "nutritionalInformation": {
-                    "calories": "0 kcal",
-                    "fat": "0g",
-                    "carbohydrates": "0g",
-                    "protein": "0g"
-                },
-                "allergies": "None",
-                "price": 2.00
-            },
-            "still_water": {
-                "name": "Still Water (500 ml)",
-                "shortDescription": "Still spring water with a choice of lemon or lime.",
-                "nutritionalInformation": {
-                    "calories": "0 kcal",
-                    "fat": "0g",
-                    "carbohydrates": "0g",
-                    "protein": "0g"
-                },
-                "allergies": "None",
-                "price": 1.50
-            },
-            "tap_water": {
-                "name": "Tap Water (500 ml)",
-                "shortDescription": "Regular tap water",
-                "nutritionalInformation": {
-                    "calories": "0 kcal",
-                    "fat": "0g",
-                    "carbohydrates": "0g",
-                    "protein": "0g"
-                },
-                "allergies": "None",
-                "price": 0.00
-            }
+        "stuffed_mushrooms": {
+            "name": "Stuffed Mushrooms",
+            "description": "Mushrooms stuffed with a garlic herb cream cheese mixture, then baked",
+            "calories": "150 kcal",
+            "fat": "9g",
+            "carbohydrates": "10g",
+            "protein": "5g",
+            "allergens": "Dairy",
+            "price": 7
+        }
+    },
+    "mains": {
+        "beef_burger": {
+            "name": "Beef Burger",
+            "description": "Grass-fed beef patty with lettuce, tomato, and cheese, served on a brioche bun",
+            "calories": "600 kcal",
+            "fat": "30g",
+            "carbohydrates": "40g",
+            "protein": "40g",
+            "allergens": "Gluten, Dairy",
+            "price": 12
         },
-        "hotDrinks": {
-            "coffee": {
-                "name": "Coffee",
-                "shortDescription": "Freshly brewed coffee from single-origin beans.",
-                "nutritionalInformation": {
-                    "calories": "2 kcal",
-                    "fat": "0g",
-                    "carbohydrates": "0g",
-                    "protein": "0.3g"
-                },
-                "allergies": "None",
-                "price": 2.50
-            },
-            "green_tea": {
-                "name": "Green Tea",
-                "shortDescription": "Steamed green tea, known for its antioxidants.",
-                "nutritionalInformation": {
-                    "calories": "0 kcal",
-                    "fat": "0g",
-                    "carbohydrates": "0g",
-                    "protein": "0g"
-                },
-                "allergies": "None",
-                "price": 2.00
-            },
-            "hot_chocolate": {
-                "name": "Hot Chocolate",
-                "shortDescription": "Rich and creamy hot chocolate, made with real cocoa and topped with whipped cream.",
-                "nutritionalInformation": {
-                    "calories": "250 kcal",
-                    "fat": "12g",
-                    "carbohydrates": "32g",
-                    "protein": "8g"
-                },
-                "allergies": "Dairy",
-                "price": 3.00
-            },
-            "chai_latte": {
-                "name": "Chai Latte",
-                "shortDescription": "Spiced tea mixed with steamed milk and a touch of sweetness.",
-                "nutritionalInformation": {
-                    "calories": "210 kcal",
-                    "fat": "7g",
-                    "carbohydrates": "35g",
-                    "protein": "8g"
-                },
-                "allergies": "Dairy",
-                "price": 4.00
-            }
+        "vegetable_pasta": {
+            "name": "Vegetable Pasta",
+            "description": "Whole wheat pasta tossed with seasonal vegetables in a light tomato sauce",
+            "calories": "420 kcal",
+            "fat": "12g",
+            "carbohydrates": "68g",
+            "protein": "14g",
+            "allergens": "Gluten",
+            "price": 11
         },
-        "desserts": {
-            "chocolate_lava_cake": {
-                "name": "Chocolate Lava Cake",
-                "shortDescription": "Warm, gooey chocolate cake with a molten chocolate center, served with vanilla ice cream.",
-                "nutritionalInformation": {
-                    "calories": "310 kcal",
-                    "fat": "18g",
-                    "carbohydrates": "34g",
-                    "protein": "4g"
-                },
-                "allergies": "Gluten, Eggs, Dairy",
-                "price": 6.00
-            },
-            "cheesecake": {
-                "name": "Cheesecake",
-                "shortDescription": "Creamy cheesecake on a graham cracker crust, topped with fresh berries.",
-                "nutritionalInformation": {
-                    "calories": "320 kcal",
-                    "fat": "20g",
-                    "carbohydrates": "26g",
-                    "protein": "6g"
-                },
-                "allergies": "Gluten, Eggs, Dairy",
-                "price": 5.50
-            },
-            "apple_pie": {
-                "name": "Apple Pie",
-                "shortDescription": "Classic apple pie with a flaky crust, served with a scoop of vanilla ice cream.",
-                "nutritionalInformation": {
-                    "calories": "350 kcal",
-                    "fat": "17g",
-                    "carbohydrates": "45g",
-                    "protein": "3g"
-                },
-                "allergies": "Gluten, Dairy",
-                "price": 5.00
-            },
-            "panna_cotta": {
-                "name": "Panna Cotta",
-                "shortDescription": "Smooth and creamy panna cotta, served with a berry compote.",
-                "nutritionalInformation": {
-                    "calories": "270 kcal",
-                    "fat": "18g",
-                    "carbohydrates": "25g",
-                    "protein": "4g"
-                },
-                "allergies": "Dairy",
-                "price": 6.50
-            }
+        "grilled_salmon": {
+            "name": "Grilled Salmon",
+            "description": "Salmon fillet, grilled and served with a lemon dill sauce and steamed vegetables",
+            "calories": "520 kcal",
+            "fat": "28g",
+            "carbohydrates": "20g",
+            "protein": "50g",
+            "allergens": "Fish",
+            "price": 15
+        },
+        "quinoa_salad": {
+            "name": "Quinoa Salad",
+            "description": "A hearty salad with quinoa, mixed greens, avocados, tomatoes, cucumbers, and a lemon vinaigrette",
+            "calories": "350 kcal",
+            "fat": "14g",
+            "carbohydrates": "45g",
+            "protein": "12g",
+            "allergens": "None",
+            "price": 10
+        }
+    },
+    "alcoholicDrinks": {
+        "craft_beer": {
+            "name": "Craft Beer",
+            "description": "Locally brewed IPA with citrus and pine notes",
+            "calories": "180 kcal",
+            "fat": "0g",
+            "carbohydrates": "14g",
+            "protein": "2g",
+            "allergens": "Gluten",
+            "price": 5
+        },
+        "red_wine": {
+            "name": "Glass of Red Wine (125 ml)",
+            "description": "Medium-bodied red wine with flavors of cherry and blackberry",
+            "calories": "125 kcal",
+            "fat": "0g",
+            "carbohydrates": "4g",
+            "protein": "0g",
+            "allergens": "Sulfites",
+            "price": 7
+        },
+        "gin_tonic": {
+            "name": "Gin Tonic",
+            "description": "Classic gin and tonic with a lime wedge for garnish",
+            "calories": "120 kcal",
+            "fat": "0g",
+            "carbohydrates": "4g",
+            "protein": "0g",
+            "allergens": "None",
+            "price": 8
+        },
+        "white_wine": {
+            "name": "Glass of White Wine (125 ml)",
+            "description": "Crisp and refreshing white wine with hints of apple and pear",
+            "calories": "120 kcal",
+            "fat": "0g",
+            "carbohydrates": "3g",
+            "protein": "0g",
+            "allergens": "Sulfites",
+            "price": 7
+        }
+    },
+    "nonAlcoholicDrinks": {
+        "lemonade": {
+            "name": "Lemonade",
+            "description": "Freshly squeezed lemonade, sweetened with a touch of honey",
+            "calories": "120 kcal",
+            "fat": "0g",
+            "carbohydrates": "32g",
+            "protein": "0g",
+            "allergens": "None",
+            "price": 3
+        },
+        "iced_tea": {
+            "name": "Iced Tea",
+            "description": "Cold-brewed black tea, served over ice with a lemon wedge",
+            "calories": "90 kcal",
+            "fat": "0g",
+            "carbohydrates": "24g",
+            "protein": "0g",
+            "allergens": "None",
+            "price": 2.5
+        },
+        "fruit_smoothie": {
+            "name": "Fruit Smoothie",
+            "description": "A blend of seasonal fruits, yogurt, and honey",
+            "calories": "200 kcal",
+            "fat": "2g",
+            "carbohydrates": "40g",
+            "protein": "5g",
+            "allergens": "Dairy",
+            "price": 4.5
+        },
+        "sparkling_water": {
+            "name": "Sparkling Water (500 ml)",
+            "description": "Naturally carbonated spring water with a choice of lemon or lime",
+            "calories": "0 kcal",
+            "fat": "0g",
+            "carbohydrates": "0g",
+            "protein": "0g",
+            "allergens": "None",
+            "price": 2
+        },
+        "still_water": {
+            "name": "Still Water (500 ml)",
+            "description": "Still spring water with a choice of lemon or lime",
+            "calories": "0 kcal",
+            "fat": "0g",
+            "carbohydrates": "0g",
+            "protein": "0g",
+            "allergens": "None",
+            "price": 1.5
+        },
+        "tap_water": {
+            "name": "Tap Water (500 ml)",
+            "description": "Regular tap water",
+            "calories": "0 kcal",
+            "fat": "0g",
+            "carbohydrates": "0g",
+            "protein": "0g",
+            "allergens": "None",
+            "price": 0
+        }
+    },
+    "hotDrinks": {
+        "coffee": {
+            "name": "Coffee",
+            "description": "Freshly brewed coffee from single-origin beans",
+            "calories": "2 kcal",
+            "fat": "0g",
+            "carbohydrates": "0g",
+            "protein": "0.3g",
+            "allergens": "None",
+            "price": 2.5
+        },
+        "green_tea": {
+            "name": "Green Tea",
+            "description": "Steamed green tea, known for its antioxidants",
+            "calories": "0 kcal",
+            "fat": "0g",
+            "carbohydrates": "0g",
+            "protein": "0g",
+            "allergens": "None",
+            "price": 2
+        },
+        "hot_chocolate": {
+            "name": "Hot Chocolate",
+            "description": "Rich and creamy hot chocolate, made with real cocoa and topped with whipped cream",
+            "calories": "250 kcal",
+            "fat": "12g",
+            "carbohydrates": "32g",
+            "protein": "8g",
+            "allergens": "Dairy",
+            "price": 3
+        },
+        "chai_latte": {
+            "name": "Chai Latte",
+            "description": "Spiced tea mixed with steamed milk and a touch of sweetness",
+            "calories": "210 kcal",
+            "fat": "7g",
+            "carbohydrates": "35g",
+            "protein": "8g",
+            "allergens": "Dairy",
+            "price": 4
+        }
+    },
+    "desserts": {
+        "chocolate_lava_cake": {
+            "name": "Chocolate Lava Cake",
+            "description": "Warm, gooey chocolate cake with a molten chocolate center, served with vanilla ice cream",
+            "calories": "310 kcal",
+            "fat": "18g",
+            "carbohydrates": "34g",
+            "protein": "4g",
+            "allergens": "Gluten, Eggs, Dairy",
+            "price": 6
+        },
+        "cheesecake": {
+            "name": "Cheesecake",
+            "description": "Creamy cheesecake on a graham cracker crust, topped with fresh berries",
+            "calories": "320 kcal",
+            "fat": "20g",
+            "carbohydrates": "26g",
+            "protein": "6g",
+            "allergens": "Gluten, Eggs, Dairy",
+            "price": 5.5
+        },
+        "apple_pie": {
+            "name": "Apple Pie",
+            "description": "Classic apple pie with a flaky crust, served with a scoop of vanilla ice cream",
+            "calories": "350 kcal",
+            "fat": "17g",
+            "carbohydrates": "45g",
+            "protein": "3g",
+            "allergens": "Gluten, Dairy",
+            "price": 5
+        },
+        "panna_cotta": {
+            "name": "Panna Cotta",
+            "description": "Smooth and creamy panna cotta, served with a berry compote",
+            "calories": "270 kcal",
+            "fat": "18g",
+            "carbohydrates": "25g",
+            "protein": "4g",
+            "allergens": "Dairy",
+            "price": 6.5
         }
     }
 }

@@ -49,8 +49,6 @@ function send_message(initial) {
         success: function(data) {
             $("#customerMessage").focus();
             $("#" + spanID).html(data.waiter);
-            var textarea = document.getElementById("chat-history");
-            textarea.scrollTop = textarea.scrollHeight;
         }
     });
 }

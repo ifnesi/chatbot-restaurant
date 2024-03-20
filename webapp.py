@@ -149,7 +149,7 @@ def send_message():
         elif customerMessage:
             chatMessages[session["customerID"]].append(HumanMessage(f"Customer has send the message below. Please address it making sure to comply with all policies, no need to show the menu again unless if asked:\n{customerMessage}"))
         response = chatSessions[session["customerID"]].invoke(
-            chatMessages[session["customerID"]]
+            chatMessages[session["customerID"]],
         )
         result["waiter"] = response.content
         chatMessages[session["customerID"]].append(response)

@@ -1,3 +1,33 @@
+import logging
+
+from confluent_kafka.admin import NewTopic
+
+
+def delivery_report(err, msg):
+    if err is not None:
+        logging.error(
+            f"Delivery failed for record {msg.key()} for the topic '{msg.topic()}': {err}"
+        )
+    else:
+        logging.info(
+            f"Record {msg.key()} successfully produced to topic/partition '{msg.topic()}/{msg.partition()}' at offset #{msg.offset()}"
+        )
+
+def create_topic(admin_client, topic):
+    admin_client.create_topics(
+        [
+            NewTopic(
+                topic=topic,
+                num_partitions=1,
+                replication_factor=1,
+                config={
+                    "cleanup.policy": "compact",
+                },
+            )
+        ]
+    )
+
+
 def initial_prompt(
     rag_data: dict,
     waiter_name: str,

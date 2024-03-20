@@ -10,7 +10,7 @@ from confluent_kafka.serialization import (
     SerializationContext,
     MessageField,
 )
-from confluent_kafka.admin import AdminClient, NewTopic
+from confluent_kafka.admin import AdminClient
 from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroSerializer
 

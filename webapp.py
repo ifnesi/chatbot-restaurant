@@ -38,7 +38,7 @@ log = logging.getLogger("werkzeug")
 log.setLevel(logging.WARNING)
 
 # Load env variables
-load_dotenv('./.env_api_keys')
+load_dotenv("./.env_api_keys")
 
 # Global variables
 chatSessions = dict()
@@ -117,7 +117,7 @@ def do_login():
 
     # LLM Session
     chatSessions[session["customerID"]] = ChatOpenAI(
-        model="gpt-3.5-turbo-16k",
+        model="gpt-4-0125-preview",
     )
 
     # Login user
@@ -142,11 +142,15 @@ def send_message():
         if initialMessage:
             chatMessages[session["customerID"]] = [
                 SystemMessage(content=initial_prompt(RAG_DATA, session["waiterName"])),
-                HumanMessage(content=f"""Please greet this new customer and show the main menu. Customer name is {session["customerName"]}, customer is {"on or above 21 years old" if session["ofLegalAge"] else "under 21 years old"} and is allergic to: {", ".join(session["allergens"])}"""),
+                HumanMessage(
+                    content=f"""We have a new customer, please greet they with a friendly message and show the main menu in a HTML table format making sure to also show the nutritional information, allergens and price as well as our discount and service tax policies. Customer name is {session["customerName"]}, customer is {"on or above 21 years old" if session["ofLegalAge"] else "under 21 years old"} and is allergic to: {", ".join(session["allergens"])}"""
+                ),
             ]
         elif customerMessage:
-            chatMessages[session["customerID"]].append(HumanMessage(customerMessage))
-        response = chatSessions[session["customerID"]].invoke(chatMessages[session["customerID"]])
+            chatMessages[session["customerID"]].append(HumanMessage(f"Customer has send the message below. Please address it making sure to comply with all policies, no need to show the menu again unless if asked:\n{customerMessage}"))
+        response = chatSessions[session["customerID"]].invoke(
+            chatMessages[session["customerID"]]
+        )
         result["waiter"] = response.content
         chatMessages[session["customerID"]].append(response)
     except Exception as err:

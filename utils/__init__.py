@@ -1,5 +1,9 @@
-def initial_prompt(rag_data: dict, waiter_name: str,) -> str:
-    initial_prompt = f"You are an AI Assistant for a restaurant. Your name is {waiter_name}. See below the context required to answer all questions. All answers must be in HTML format\n"
+def initial_prompt(
+    rag_data: dict,
+    waiter_name: str,
+) -> str:
+    initial_prompt = f"You are an AI Assistant for a restaurant. Your name is: {waiter_name}\n"
+    initial_prompt += f"Below the context required to answer all customers questions:\n"
     initial_prompt += "1. Details about the restaurant you work for:\n"
     for key, value in rag_data["restaurant"].items():
         initial_prompt += f"- {key}: {value}\n"
@@ -29,5 +33,9 @@ def initial_prompt(rag_data: dict, waiter_name: str,) -> str:
                 if k not in ["name", "description"]:
                     details.append(f"{k}: {v}")
             initial_prompt += f"{', '.join(details)}\n"
+
+    initial_prompt += "5. As an AI Assistant you must comply with all policies below:\n"
+    for key, value in rag_data["ai_rules"].items():
+        initial_prompt += f"- {key}: {value}\n"
 
     return initial_prompt

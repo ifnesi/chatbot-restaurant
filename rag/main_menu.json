@@ -1,6 +1,6 @@
 {
     "starters": {
-        "tomato_bruschetta": {
+        "tomato-bruschetta": {
             "name": "Tomato Bruschetta",
             "description": "Grilled bread topped with fresh tomatoes, garlic, and basil",
             "calories": "120 kcal",
@@ -10,7 +10,7 @@
             "allergens": "Gluten",
             "price": 6
         },
-        "chicken_wings": {
+        "chicken-wings": {
             "name": "Chicken Wings",
             "description": "Spicy marinated chicken wings, served with blue cheese dip",
             "calories": "290 kcal",
@@ -20,7 +20,7 @@
             "allergens": "Dairy",
             "price": 8
         },
-        "crispy_calamari": {
+        "crispy-calamari": {
             "name": "Crispy Calamari",
             "description": "Lightly breaded calamari, fried and served with a side of marinara sauce",
             "calories": "310 kcal",
@@ -30,7 +30,7 @@
             "allergens": "Gluten, Shellfish",
             "price": 9
         },
-        "stuffed_mushrooms": {
+        "stuffed-mushrooms": {
             "name": "Stuffed Mushrooms",
             "description": "Mushrooms stuffed with a garlic herb cream cheese mixture, then baked",
             "calories": "150 kcal",
@@ -42,7 +42,7 @@
         }
     },
     "mains": {
-        "beef_burger": {
+        "beef-burger": {
             "name": "Beef Burger",
             "description": "Grass-fed beef patty with lettuce, tomato, and cheese, served on a brioche bun",
             "calories": "600 kcal",
@@ -52,7 +52,7 @@
             "allergens": "Gluten, Dairy",
             "price": 12
         },
-        "vegetable_pasta": {
+        "vegetable-pasta": {
             "name": "Vegetable Pasta",
             "description": "Whole wheat pasta tossed with seasonal vegetables in a light tomato sauce",
             "calories": "420 kcal",
@@ -62,7 +62,7 @@
             "allergens": "Gluten",
             "price": 11
         },
-        "grilled_salmon": {
+        "grilled-salmon": {
             "name": "Grilled Salmon",
             "description": "Salmon fillet, grilled and served with a lemon dill sauce and steamed vegetables",
             "calories": "520 kcal",
@@ -72,7 +72,7 @@
             "allergens": "Fish",
             "price": 15
         },
-        "quinoa_salad": {
+        "quinoa-salad": {
             "name": "Quinoa Salad",
             "description": "A hearty salad with quinoa, mixed greens, avocados, tomatoes, cucumbers, and a lemon vinaigrette",
             "calories": "350 kcal",
@@ -83,8 +83,8 @@
             "price": 10
         }
     },
-    "alcoholicDrinks": {
-        "craft_beer": {
+    "alcoholic-drinks": {
+        "craft-beer": {
             "name": "Craft Beer",
             "description": "Locally brewed IPA with citrus and pine notes",
             "calories": "180 kcal",
@@ -94,7 +94,7 @@
             "allergens": "Gluten",
             "price": 5
         },
-        "red_wine": {
+        "red-wine": {
             "name": "Glass of Red Wine (125 ml)",
             "description": "Medium-bodied red wine with flavors of cherry and blackberry",
             "calories": "125 kcal",
@@ -104,7 +104,7 @@
             "allergens": "Sulfites",
             "price": 7
         },
-        "gin_tonic": {
+        "gin-tonic": {
             "name": "Gin Tonic",
             "description": "Classic gin and tonic with a lime wedge for garnish",
             "calories": "120 kcal",
@@ -114,7 +114,7 @@
             "allergens": "None",
             "price": 8
         },
-        "white_wine": {
+        "white-wine": {
             "name": "Glass of White Wine (125 ml)",
             "description": "Crisp and refreshing white wine with hints of apple and pear",
             "calories": "120 kcal",
@@ -125,7 +125,7 @@
             "price": 7
         }
     },
-    "nonAlcoholicDrinks": {
+    "non-alcoholic-drinks": {
         "lemonade": {
             "name": "Lemonade",
             "description": "Freshly squeezed lemonade, sweetened with a touch of honey",
@@ -136,7 +136,7 @@
             "allergens": "None",
             "price": 3
         },
-        "iced_tea": {
+        "iced-tea": {
             "name": "Iced Tea",
             "description": "Cold-brewed black tea, served over ice with a lemon wedge",
             "calories": "90 kcal",
@@ -146,7 +146,7 @@
             "allergens": "None",
             "price": 2.5
         },
-        "fruit_smoothie": {
+        "fruit-smoothie": {
             "name": "Fruit Smoothie",
             "description": "A blend of seasonal fruits, yogurt, and honey",
             "calories": "200 kcal",
@@ -156,7 +156,7 @@
             "allergens": "Dairy",
             "price": 4.5
         },
-        "sparkling_water": {
+        "sparkling-water": {
             "name": "Sparkling Water (500 ml)",
             "description": "Naturally carbonated spring water with a choice of lemon or lime",
             "calories": "0 kcal",
@@ -166,7 +166,7 @@
             "allergens": "None",
             "price": 2
         },
-        "still_water": {
+        "still-water": {
             "name": "Still Water (500 ml)",
             "description": "Still spring water with a choice of lemon or lime",
             "calories": "0 kcal",
@@ -176,7 +176,7 @@
             "allergens": "None",
             "price": 1.5
         },
-        "tap_water": {
+        "tap-water": {
             "name": "Tap Water (500 ml)",
             "description": "Regular tap water",
             "calories": "0 kcal",
@@ -187,7 +187,7 @@
             "price": 0
         }
     },
-    "hotDrinks": {
+    "hot-drinks": {
         "coffee": {
             "name": "Coffee",
             "description": "Freshly brewed coffee from single-origin beans",
@@ -198,7 +198,7 @@
             "allergens": "None",
             "price": 2.5
         },
-        "green_tea": {
+        "green-tea": {
             "name": "Green Tea",
             "description": "Steamed green tea, known for its antioxidants",
             "calories": "0 kcal",
@@ -208,7 +208,7 @@
             "allergens": "None",
             "price": 2
         },
-        "hot_chocolate": {
+        "hot-chocolate": {
             "name": "Hot Chocolate",
             "description": "Rich and creamy hot chocolate, made with real cocoa and topped with whipped cream",
             "calories": "250 kcal",
@@ -218,7 +218,7 @@
             "allergens": "Dairy",
             "price": 3
         },
-        "chai_latte": {
+        "chai-latte": {
             "name": "Chai Latte",
             "description": "Spiced tea mixed with steamed milk and a touch of sweetness",
             "calories": "210 kcal",
@@ -230,7 +230,7 @@
         }
     },
     "desserts": {
-        "chocolate_lava_cake": {
+        "chocolate-lava-cake": {
             "name": "Chocolate Lava Cake",
             "description": "Warm, gooey chocolate cake with a molten chocolate center, served with vanilla ice cream",
             "calories": "310 kcal",
@@ -250,7 +250,7 @@
             "allergens": "Gluten, Eggs, Dairy",
             "price": 5.5
         },
-        "apple_pie": {
+        "apple-pie": {
             "name": "Apple Pie",
             "description": "Classic apple pie with a flaky crust, served with a scoop of vanilla ice cream",
             "calories": "350 kcal",
@@ -260,7 +260,7 @@
             "allergens": "Gluten, Dairy",
             "price": 5
         },
-        "panna_cotta": {
+        "panna-cotta": {
             "name": "Panna Cotta",
             "description": "Smooth and creamy panna cotta, served with a berry compote",
             "calories": "270 kcal",

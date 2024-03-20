@@ -1,6 +1,6 @@
 {
     "starters": {
-        "mini_cheese_quesadillas": {
+        "mini-cheese-quesadillas": {
             "name": "Mini Cheese Quesadillas",
             "description": "Cheesy and delicious mini quesadillas, served with a side of salsa",
             "calories": "150 kcal",
@@ -10,7 +10,7 @@
             "allergens": "Dairy, Gluten",
             "price": 4
         },
-        "chicken_nuggets": {
+        "chicken-nuggets": {
             "name": "Chicken Nuggets",
             "description": "Crispy chicken nuggets served with ketchup and honey mustard dipping sauces",
             "calories": "200 kcal",
@@ -22,7 +22,7 @@
         }
     },
     "mains": {
-        "mac_n_cheese": {
+        "mac-n-cheese": {
             "name": "Mac & Cheese",
             "description": "Creamy macaroni and cheese, a classic favorite",
             "calories": "300 kcal",
@@ -32,7 +32,7 @@
             "allergens": "Dairy, Gluten",
             "price": 5
         },
-        "mini_burgers": {
+        "mini-burgers": {
             "name": "Mini Burgers",
             "description": "Three mini burgers on soft buns, served with fries",
             "calories": "400 kcal",
@@ -44,7 +44,7 @@
         }
     },
     "drinks": {
-        "fruit_punch": {
+        "fruit-punch": {
             "name": "Fruit Punch",
             "description": "Sweet and refreshing fruit punch made with real fruit juice",
             "calories": "80 kcal",
@@ -66,7 +66,7 @@
         }
     },
     "desserts": {
-        "ice_crean_sundae": {
+        "ice-crean-sundae": {
             "name": "Ice Cream Sundae",
             "description": "Vanilla ice cream topped with chocolate syrup, whipped cream, and a cherry",
             "calories": "250 kcal",
@@ -76,7 +76,7 @@
             "allergens": "Dairy",
             "price": 3
         },
-        "fruit_cup": {
+        "fruit-cup": {
             "name": "Fruit Cup",
             "description": "A mix of fresh seasonal fruits",
             "calories": "90 kcal",

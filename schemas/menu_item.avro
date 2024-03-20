@@ -1,0 +1,39 @@
+{
+    "name": "menu_item",
+    "namespace": "streambite.example.com",
+    "type": "record",
+    "fields": [
+        {
+            "name": "name",
+            "type": "string"
+        },
+        {
+            "name": "description",
+            "type": "string"
+        },
+        {
+            "name": "calories",
+            "type": "string"
+        },
+        {
+            "name": "fat",
+            "type": "string"
+        },
+        {
+            "name": "carbohydrates",
+            "type": "string"
+        },
+        {
+            "name": "protein",
+            "type": "string"
+        },
+        {
+            "name": "allergens",
+            "type": "string"
+        },
+        {
+            "name": "price",
+            "type": "double"
+        }
+    ]
+}

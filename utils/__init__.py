@@ -1,9 +1,15 @@
+import hmac
+import base64
+import hashlib
 import logging
 
 from confluent_kafka.admin import NewTopic
 
 
-def delivery_report(err, msg):
+def delivery_report(
+    err,
+    msg,
+):
     if err is not None:
         logging.error(
             f"Delivery failed for record {msg.key()} for the topic '{msg.topic()}': {err}"
@@ -13,7 +19,11 @@ def delivery_report(err, msg):
             f"Record {msg.key()} successfully produced to topic/partition '{msg.topic()}/{msg.partition()}' at offset #{msg.offset()}"
         )
 
-def create_topic(admin_client, topic):
+
+def create_topic(
+    admin_client,
+    topic,
+):
     admin_client.create_topics(
         [
             NewTopic(
@@ -32,7 +42,9 @@ def initial_prompt(
     rag_data: dict,
     waiter_name: str,
 ) -> str:
-    initial_prompt = f"You are an AI Assistant for a restaurant. Your name is: {waiter_name}\n"
+    initial_prompt = (
+        f"You are an AI Assistant for a restaurant. Your name is: {waiter_name}\n"
+    )
     initial_prompt += f"Below the context required to answer all customers questions:\n"
     initial_prompt += "1. Details about the restaurant you work for:\n"
     for key, value in rag_data["restaurant"].items():
@@ -69,3 +81,32 @@ def initial_prompt(
         initial_prompt += f"- {key}: {value}\n"
 
     return initial_prompt
+
+
+def hash_password(
+    salt: str,
+    password: str,
+) -> str:
+    hashed_password = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt.encode("utf-8"),
+        100000,
+    )
+    return base64.b64encode(hashed_password).decode("utf-8")
+
+
+def assess_password(
+    salt: str,
+    hashed_password: str,
+    password: str,
+) -> bool:
+    return hmac.compare_digest(
+        base64.b64decode(hashed_password.encode("utf-8")),
+        hashlib.pbkdf2_hmac(
+            "sha256",
+            password.encode("utf-8"),
+            salt.encode("utf-8"),
+            100000,
+        ),
+    )

@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import logging
 import argparse
@@ -6,40 +7,19 @@ import argparse
 from dotenv import load_dotenv
 from configparser import ConfigParser
 
-from confluent_kafka import Producer
-from confluent_kafka.serialization import (
-    StringSerializer,
-    SerializationContext,
-    MessageField,
-)
-from confluent_kafka.admin import AdminClient
-from confluent_kafka.schema_registry import SchemaRegistryClient
-from confluent_kafka.schema_registry.avro import AvroSerializer
-
-from utils import create_topic, delivery_report, hash_password
+from utils import KafkaClient, SerializationContext, MessageField, hash_password, sys_exc
 
 
 def main(args):
     # Load env variables
     load_dotenv(args.env_vars)
 
-    # Kafka and Schema Registry Config
-    config = ConfigParser()
-    config.read(args.config)
-
-    schema_registry_config = dict(config["schema-registry"])
-    schema_registry_client = SchemaRegistryClient(schema_registry_config)
-    string_serializer = StringSerializer("utf_8")
-
-    producer_config = {
-        "client.id": args.client_id,
-    }
-    producer_config.update(dict(config["kafka"]))
-    producer = Producer(producer_config)
-
-    # Get list of topics
-    admin_client = AdminClient(producer_config)
-    topic_list = admin_client.list_topics().topics.keys()
+    kafka = KafkaClient(
+        args.config,
+        args.client_id,
+        set_admin=True,
+        set_producer=True,
+    )
 
     # Data Config
     config_data = ConfigParser()
@@ -53,38 +33,30 @@ def main(args):
                 topic = param["topic"]
                 # Create new topic if required
                 try:
-                    if topic not in topic_list:
-                        logging.info(f"Creating topic '{topic}'")
-                        create_topic(admin_client, topic)
-                    else:
-                        logging.info(f"Topic '{topic}' already exists")
-
-                except Exception as err:
-                    logging.error(f"{err}")
+                    kafka.create_topic(topic)
+                except Exception:
+                    logging.error(sys_exc(sys.exc_info()))
                 else:
                     # Populate topic
                     with open(param["filename"], "r") as f:
                         data_to_load = json.loads(f.read())
                     for key, value in data_to_load.items():
                         try:
-                            producer.poll(0.0)
-                            producer.produce(
+                            kafka.producer.poll(0.0)
+                            kafka.producer.produce(
                                 topic=topic,
-                                key=string_serializer(key),
-                                value=string_serializer(value),
-                                on_delivery=delivery_report,
+                                key=kafka.string_serializer(key),
+                                value=kafka.string_serializer(value),
+                                on_delivery=kafka.delivery_report,
                             )
-                        except Exception as err:
-                            logging.error(f"{err}")
+                        except Exception:
+                            logging.error(sys_exc(sys.exc_info()))
 
             elif rag in ["main_menu", "kids_menu"]:
                 # Avro serialiser
                 with open(param["schema"], "r") as f:
                     schema_str = f.read()
-                avro_serializer = AvroSerializer(
-                    schema_registry_client,
-                    schema_str=schema_str,
-                )
+                avro_serializer = kafka.avro_serialiser(schema_str)
 
                 topic_prefix = param["topic_prefix"]
                 with open(param["filename"], "r") as f:
@@ -94,21 +66,17 @@ def main(args):
                     topic = f"{topic_prefix}{header}"
                     # Create new topic if required
                     try:
-                        if topic not in topic_list:
-                            logging.info(f"Creating topic '{topic}'")
-                            create_topic(admin_client, topic)
-                        else:
-                            logging.info(f"Topic '{topic}' already exists")
-                    except Exception as err:
-                        logging.error(f"{err}")
+                        kafka.create_topic(topic)
+                    except Exception:
+                        logging.error(sys_exc(sys.exc_info()))
                     else:
                         for key, value in items.items():
                             # Populate topic
                             try:
-                                producer.poll(0.0)
-                                producer.produce(
+                                kafka.producer.poll(0.0)
+                                kafka.producer.produce(
                                     topic=topic,
-                                    key=string_serializer(key),
+                                    key=kafka.string_serializer(key),
                                     value=avro_serializer(
                                         value,
                                         SerializationContext(
@@ -116,10 +84,10 @@ def main(args):
                                             MessageField.VALUE,
                                         ),
                                     ),
-                                    on_delivery=delivery_report,
+                                    on_delivery=kafka.delivery_report,
                                 )
-                            except Exception as err:
-                                logging.error(f"{err}")
+                            except Exception:
+                                logging.error(sys_exc(sys.exc_info()))
 
             elif rag in ["customer_profiles"]:
                 password_salt = os.environ.get("PASSWORD_SALT")
@@ -127,21 +95,14 @@ def main(args):
                 # Avro serialiser
                 with open(param["schema"], "r") as f:
                     schema_str = f.read()
-                avro_serializer = AvroSerializer(
-                    schema_registry_client,
-                    schema_str=schema_str,
-                )
+                avro_serializer = kafka.avro_serialiser(schema_str)
 
                 # Create new topic if required
                 topic = param["topic"]
                 try:
-                    if topic not in topic_list:
-                        logging.info(f"Creating topic '{topic}'")
-                        create_topic(admin_client, topic)
-                    else:
-                        logging.info(f"Topic '{topic}' already exists")
-                except Exception as err:
-                    logging.error(f"{err}")
+                    kafka.create_topic(topic)
+                except Exception:
+                    logging.error(sys_exc(sys.exc_info()))
                 else:
                     with open(param["filename"], "r") as f:
                         data_to_load = json.loads(f.read())
@@ -153,10 +114,10 @@ def main(args):
                                 value.get("password", "1234"),
                             )
                             value.pop("password", None)
-                            producer.poll(0.0)
-                            producer.produce(
+                            kafka.producer.poll(0.0)
+                            kafka.producer.produce(
                                 topic=topic,
-                                key=string_serializer(username),
+                                key=kafka.string_serializer(username),
                                 value=avro_serializer(
                                     value,
                                     SerializationContext(
@@ -164,16 +125,16 @@ def main(args):
                                         MessageField.VALUE,
                                     ),
                                 ),
-                                on_delivery=delivery_report,
+                                on_delivery=kafka.delivery_report,
                             )
-                        except Exception as err:
-                            logging.error(f"{err}")
+                        except Exception:
+                            logging.error(sys_exc(sys.exc_info()))
 
     except KeyboardInterrupt:
         pass
     finally:
         logging.info("Flushing records...")
-        producer.flush()
+        kafka.producer.flush()
 
 
 if __name__ == "__main__":
@@ -195,7 +156,7 @@ if __name__ == "__main__":
         "--client-id",
         dest="client_id",
         type=str,
-        help="Producer's Client ID (default: xml-producer-demo-01)",
+        help="Producer's Client ID prefix (default: chatbot-admin-plane)",
         default="chatbot-admin-plane-producer",
     )
     parser.add_argument(

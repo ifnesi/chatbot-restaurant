@@ -1,41 +1,227 @@
+import sys
 import hmac
 import base64
+import signal
 import hashlib
 import logging
 
+from configparser import ConfigParser
+
+from confluent_kafka import Producer, Consumer, KafkaException
 from confluent_kafka.admin import NewTopic
+from confluent_kafka.serialization import (
+    StringSerializer,
+    StringDeserializer,
+    SerializationContext,
+    MessageField,
+)
+from confluent_kafka.admin import AdminClient
+from confluent_kafka.schema_registry import SchemaRegistryClient
+from confluent_kafka.schema_registry.avro import AvroSerializer, AvroDeserializer
 
 
-def delivery_report(
-    err,
-    msg,
-):
-    if err is not None:
-        logging.error(
-            f"Delivery failed for record {msg.key()} for the topic '{msg.topic()}': {err}"
-        )
-    else:
-        logging.info(
-            f"Record {msg.key()} successfully produced to topic/partition '{msg.topic()}/{msg.partition()}' at offset #{msg.offset()}"
-        )
+class KafkaClient:
+    def __init__(
+        self,
+        config_file: str,
+        client_id: str,
+        set_admin: bool = False,
+        set_producer: bool = False,
+        set_consumer_earliest: bool = False,
+        set_consumer_latest: bool = False,
+    ) -> None:
+        self.producer = None
+        self.admin_client = None
+        self.consumer_latest = None
+        self.consumer_earliest = None
 
+        # Set signal handlers
+        signal.signal(signal.SIGINT, self.signal_handler)
+        signal.signal(signal.SIGTERM, self.signal_handler)
 
-def create_topic(
-    admin_client,
-    topic,
-):
-    admin_client.create_topics(
-        [
-            NewTopic(
-                topic=topic,
-                num_partitions=1,
-                replication_factor=1,
-                config={
-                    "cleanup.policy": "compact",
-                },
+        self._config = ConfigParser()
+        self._config.read(config_file)
+
+        # String SerDes
+        self.string_serializer = StringSerializer("utf_8")
+        self.string_deserializer = StringDeserializer("utf_8")
+
+        # Schema Registry
+        self._schema_registry_config = dict(self._config["schema-registry"])
+        self.schema_registry_client = SchemaRegistryClient(self._schema_registry_config)
+
+        # Producer
+        self._producer_config = {
+            "client.id": f"{client_id}-producer",
+        }
+        self._producer_config.update(dict(self._config["kafka"]))
+        if set_producer:
+            self.producer = Producer(self._producer_config)
+
+        # Admin
+        if set_admin:
+            self.admin_client = AdminClient(self._producer_config)
+            # Get list of topics
+            self.topic_list = self.get_topics()
+
+        # Consumers
+        self._consumer_config = {
+            "group.id": f"{client_id}-consumer",
+            "client.id": f"{client_id}-consumer-01",
+        }
+        # Earliest
+        self._consumer_config.update(dict(self._config["kafka"]))
+        if set_consumer_earliest:
+            consumer_config = {
+                "auto.offset.reset": "earliest",
+                "enable.auto.commit": False,
+                **self._consumer_config,
+            }
+            self.consumer_earliest = Consumer(consumer_config)
+
+        # Latest
+        self._consumer_config.update(dict(self._config["kafka"]))
+        if set_consumer_latest:
+            consumer_config = {
+                "auto.offset.reset": "latest",
+                "enable.auto.commit": True,
+                **self._consumer_config,
+            }
+            self.consumer_latest = Consumer(consumer_config)
+
+    def signal_handler(
+        self,
+        sig,
+        frame,
+    ):
+        if self.producer:
+            logging.info("Flushing messages...")
+            try:
+                self.producer.flush()
+            except Exception:
+                logging.error(sys_exc(sys.exc_info()))
+
+        if self.consumer_earliest:
+            logging.info(
+                f"Closing consumer {self._consumer_config['client.id']} ({self._consumer_config['group.id']})..."
             )
-        ]
-    )
+            try:
+                self.consumer_earliest.close()
+            except Exception:
+                logging.error(sys_exc(sys.exc_info()))
+
+        if self.consumer_latest:
+            logging.info(
+                f"Closing consumer {self._consumer_config['client.id']} ({self._consumer_config['group.id']})..."
+            )
+            try:
+                self.consumer_latest.close()
+            except Exception:
+                logging.error(sys_exc(sys.exc_info()))
+
+        sys.exit(0)
+
+    def avro_serialiser(
+        self,
+        schema_str: str,
+    ):
+        return AvroSerializer(
+            self.schema_registry_client,
+            schema_str=schema_str,
+        )
+
+    def avro_deserialiser(
+        self,
+        schema_str: str = None,
+    ):
+        return AvroDeserializer(
+            self.schema_registry_client,
+            schema_str=schema_str,
+        )
+
+    def get_topics(self) -> list:
+        return self.admin_client.list_topics().topics.keys()
+
+    def delivery_report(
+        self,
+        err,
+        msg,
+    ) -> None:
+        if err is not None:
+            logging.error(
+                f"Delivery failed for record {msg.key()} for the topic '{msg.topic()}': {err}"
+            )
+        else:
+            logging.info(
+                f"Record {msg.key()} successfully produced to topic/partition '{msg.topic()}/{msg.partition()}' at offset #{msg.offset()}"
+            )
+
+    def create_topic(
+        self,
+        topic: str,
+        num_partitions: int = 1,
+        replication_factor: int = 1,
+        cleanup_policy: str = "compact",
+    ) -> None:
+        if topic not in self.topic_list:
+            logging.info(f"Creating topic '{topic}'...")
+            self.admin_client.create_topics(
+                [
+                    NewTopic(
+                        topic=topic,
+                        num_partitions=num_partitions,
+                        replication_factor=replication_factor,
+                        config={
+                            "cleanup.policy": cleanup_policy,
+                        },
+                    )
+                ]
+            )
+        else:
+            logging.info(f"Topic '{topic}' already exists")
+
+    def avro_consumer(
+        self,
+        consumer,
+        topics: list,
+        schema_str: str = None,
+    ):
+        avro_deserialiser = self.avro_deserialiser(schema_str=schema_str)
+        consumer.subscribe(topics)
+
+        logging.info(
+            f"Started Avro Consumer {self._consumer_config['client.id']} ({self._consumer_config['group.id']}) on topic(s): {', '.join(topics)}"
+        )
+        while True:
+            try:
+                msg = consumer.poll(timeout=0.25)
+                if msg is not None:
+                    if msg.error():
+                        raise KafkaException(msg.error())
+                    else:
+                        message = avro_deserialiser(
+                            msg.value(),
+                            SerializationContext(
+                                msg.topic(),
+                                MessageField.VALUE,
+                            ),
+                        )
+                        yield (
+                            msg.topic(),
+                            msg.headers(),
+                            self.string_deserializer(msg.key()),
+                            message,
+                        )
+
+            except Exception:
+                logging.error(
+                    f"avro_consumer ({self._consumer_config['group.id']}): {sys_exc(sys.exc_info())}"
+                )
+
+
+def sys_exc(exc_info) -> str:
+    exc_type, exc_obj, exc_tb = exc_info
+    return f"{exc_type} | {exc_tb.tb_lineno} | {exc_obj}"
 
 
 def initial_prompt(

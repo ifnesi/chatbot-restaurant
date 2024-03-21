@@ -51,7 +51,7 @@
             "fat": "0g",
             "carbohydrates": "20g",
             "protein": "0g",
-            "allergens": "None",
+            "allergens": null,
             "price": 2
         },
         "milk": {
@@ -83,7 +83,7 @@
             "fat": "0g",
             "carbohydrates": "22g",
             "protein": "1g",
-            "allergens": "None",
+            "allergens": null,
             "price": 2.5
         }
     }

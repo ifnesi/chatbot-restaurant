@@ -3,6 +3,7 @@ import glob
 import json
 import uuid
 import logging
+import argparse
 import datetime
 
 from dotenv import load_dotenv
@@ -36,9 +37,6 @@ login_manager.init_app(app)
 login_manager.login_view = "login"
 log = logging.getLogger("werkzeug")
 log.setLevel(logging.WARNING)
-
-# Load env variables
-load_dotenv("./.env_api_keys")
 
 # Global variables
 chatSessions = dict()
@@ -147,7 +145,11 @@ def send_message():
                 ),
             ]
         elif customerMessage:
-            chatMessages[session["customerID"]].append(HumanMessage(f"Customer has send the message below. Please address it making sure to comply with all policies, no need to show the menu again unless if asked:\n{customerMessage}"))
+            chatMessages[session["customerID"]].append(
+                HumanMessage(
+                    f"Customer has send the message below. Please address it making sure to comply with all policies, no need to show the menu again unless if asked:\n{customerMessage}"
+                )
+            )
         response = chatSessions[session["customerID"]].invoke(
             chatMessages[session["customerID"]],
         )
@@ -182,6 +184,18 @@ def chatbot():
 ########
 # Main #
 ########
+def main(args):
+    # Load env variables
+    load_dotenv(args.env_vars)
+
+    # Start web server
+    app.run(
+        host=args.host,
+        port=args.port,
+        debug=True,
+    )
+
+
 if __name__ == "__main__":
     logging.basicConfig(
         format="%(asctime)s.%(msecs)03d [%(levelname)s]: %(message)s",
@@ -189,9 +203,34 @@ if __name__ == "__main__":
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    # Start http server
-    app.run(
-        host="127.0.0.1",
-        port=8888,
-        debug=True,
+    parser = argparse.ArgumentParser(description="Chatbot - Web Application")
+    parser.add_argument(
+        "--config",
+        dest="config",
+        type=str,
+        help="Enter config filename (default: config/localhost.ini)",
+        default=os.path.join("config", "localhost.ini"),
     )
+    parser.add_argument(
+        "--host",
+        dest="host",
+        type=str,
+        help="Hostname to listen on (default: 127.0.0.1)",
+        default="127.0.0.1",
+    )
+    parser.add_argument(
+        "--port",
+        dest="port",
+        type=int,
+        help="Port of the webserver (default: 8888)",
+        default=8888,
+    )
+    parser.add_argument(
+        "--env-vars",
+        dest="env_vars",
+        type=str,
+        help="Enter environment variables file name (default: .env_demo)",
+        default=".env_demo",
+    )
+
+    main(parser.parse_args())

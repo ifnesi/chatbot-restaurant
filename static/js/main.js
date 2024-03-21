@@ -26,7 +26,7 @@ function reaload_alert() {
 
 function send_message(initial) {
     var spanID = "_id-" + parseInt((new Date()).getTime()) + parseInt(Math.random() * 10000);
-    var chat_history= '<p><img src="/static/images/customer.png" class="p-1" height="28px"></img><span class="badge bg-primary text-light">' + waiter_name + '</span></br><span id="' + spanID + '"><span class="typing">Typing...</span></span></p>';
+    var chat_history= '<p><img src="/static/images/customer.png" class="p-1" height="28px"></img><span class="badge bg-primary text-light">' + waiter_name + '</span></br><span id="' + spanID + '"><span class="typing blink">Typing...</span></span></p>';
     var customer_message = $("#customer_message").val();
     if (customer_message && initial == 0) {
         $("#customer_message").val("");

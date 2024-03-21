@@ -26,12 +26,14 @@ main > .container {
   }
 }
 
-.typing {
+.blink {
   animation: blinker 1s linear infinite;
+}
+
+.typing {
   color: dimgray;
 }
 
 .error_message {
-  animation: blinker 1s linear infinite;
   color: crimson;
 }

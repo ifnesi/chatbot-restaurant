@@ -1,0 +1,20 @@
+{
+    "name": "chatbot_response",
+    "namespace": "streambite.example.com",
+    "type": "record",
+    "doc": "Responses by the Chatbot (session_id is the key)",
+    "fields": [
+        {
+            "name": "username",
+            "type": "string"
+        },
+        {
+            "name": "response",
+            "type": "string"
+        },
+        {
+            "name": "counter",
+            "type": "int"
+        }
+    ]
+}

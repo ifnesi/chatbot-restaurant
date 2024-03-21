@@ -1,0 +1,25 @@
+{
+    "name": "customer_message",
+    "namespace": "streambite.example.com",
+    "type": "record",
+    "doc": "Message submitted by the customers via the Chatbot (session_id is the key)",
+    "fields": [
+        {
+            "name": "username",
+            "type": "string"
+        },
+        {
+            "name": "message",
+            "type": [
+                "null",
+                "string"
+            ],
+            "default": null
+        },
+        {
+            "name": "counter",
+            "type": "int",
+            "doc": "Message counter, -1 means logout"
+        }
+    ]
+}

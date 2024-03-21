@@ -29,7 +29,11 @@
         },
         {
             "name": "allergens",
-            "type": "string"
+            "type": [
+                "null",
+                "string"
+            ],
+            "default": null
         },
         {
             "name": "price",

@@ -25,6 +25,7 @@ from utils import (
     KafkaClient,
     SerializationContext,
     MessageField,
+    CustomerProfiles,
     assess_password,
     sys_exc,
 )
@@ -54,30 +55,24 @@ class User(UserMixin):
         super().__init__()
         self.id = id
 
-class CustomerProfiles:
-    def __init__(self, topics) -> None:
-        self.data = dict()
-        self.topics = topics
-
-    def consumer(self, kafka) -> None:
-        while True:
-            for _, _, key, value in kafka.avro_consumer(kafka.consumer_earliest, self.topics):
-                self.data[key] = value
-                logging.info(f"Loaded profile for {key}: {json.dumps(value)}")
 
 class ChatbotResponses:
+    """Process chatbot responses"""
+
     def __init__(self, topics) -> None:
         self.data = dict()
         self.topics = topics
 
     def consumer(self, kafka) -> None:
         while True:
-            for _, _, key, value in kafka.avro_consumer(kafka.consumer_latest, self.topics):
-                logging.info(f"Message received for session_id {key}: {json.dumps(value)}")
-                counter = value["counter"]
-                value.pop("counter")
-                self.data[f"{key}-{counter}"] = value
-
+            for _, _, key, value in kafka.avro_string_consumer(
+                kafka.consumer_latest,
+                self.topics,
+            ):
+                logging.info(
+                    f"Message received for session_id-counter {key}: {value}"
+                )
+                self.data[key] = value
 
 ####################
 # Global Variables #
@@ -133,6 +128,7 @@ def login():
             restaurant_name=RESTAURANT_NAME,
             title="Login",
         )
+
 
 @app.route("/profiles", methods=["GET"])
 def profiles():
@@ -199,24 +195,30 @@ def do_login():
 @app.route("/send-message", methods=["POST"])
 @login_required
 def send_message():
-    result = {
-        "waiter": "",
-    }
     try:
+
         request_form = request.get_json()
+        span_id = request_form.get("span_id")
         initial_message = request_form.get("initial_message")
         customer_message = request_form.get("customer_message")
-        if initial_message:
-            message = {
-                "username": session["username"],
-                "counter": session["counter"],
-            }
-        elif customer_message:
-            message = {
-                "username": session["username"],
-                "counter": session["counter"],
-                "message": customer_message,
-            }
+
+        result = {
+            "waiter": "",
+            "span_id": span_id,
+        }
+
+        message = {
+            "username": session["username"],
+            "waiter_name": session["waiter_name"],
+            "counter": session["counter"],
+        }
+
+        if not initial_message and customer_message:
+            message.update(
+                {
+                    "message": customer_message,
+                }
+            )
 
         session["counter"] += 1
 
@@ -239,22 +241,17 @@ def send_message():
 
         # Wait for response (sync for now)
         response_key = f"{session['session_id']}-{session['counter']-1}"
-        start_timer = time.time()
-        timed_out = False
         while response_key not in chatbot_responses.data.keys():
-            time.sleep(0.1)
-            if time.time() - start_timer > 25:
-                result["waiter"] = "<span class='error_message'>Sorry, your message timed out! Please try again</span>"
-                timed_out = True
-                break
+            time.sleep(0.15)
 
-        if not timed_out:
-            result["waiter"] = chatbot_responses.data[response_key]["message"]
-            chatbot_responses.data.pop(response_key)
+        result["waiter"] = chatbot_responses.data[response_key]
+        chatbot_responses.data.pop(response_key)
 
     except Exception:
         logging.error(sys_exc(sys.exc_info()))
-        result["waiter"] = "<span class='error_message'>Sorry, something went wrong! Please try again</span>"
+        result[
+            "waiter"
+        ] = "<span class='error_message'>Sorry, something went wrong on the front-end! Please try again</span>"
 
     return jsonify(result)
 
@@ -266,6 +263,7 @@ def logout():
         # Produce logout message to kafka
         message = {
             "username": session["username"],
+            "waiter_name": session["waiter_name"],
             "counter": -1,
         }
         kafka.producer.poll(0.0)
@@ -307,8 +305,9 @@ def chatbot():
 # Main #
 ########
 if __name__ == "__main__":
+    FILE_APP = os.path.splitext(os.path.split(__file__)[-1])[0]
     logging.basicConfig(
-        format="%(asctime)s.%(msecs)03d [%(levelname)s]: %(message)s",
+        format=f"[{FILE_APP}] %(asctime)s.%(msecs)03d [%(levelname)s]: %(message)s",
         level=logging.INFO,
         datefmt="%Y-%m-%d %H:%M:%S",
     )
@@ -392,14 +391,12 @@ if __name__ == "__main__":
     Thread(
         target=customer_profiles.consumer,
         args=(kafka,),
-        daemon=False,
     ).start()
 
     # Start chatbot responses Consumer thread
     Thread(
         target=chatbot_responses.consumer,
         args=(kafka,),
-        daemon=False,
     ).start()
 
     # Start web server
@@ -409,4 +406,3 @@ if __name__ == "__main__":
         debug=True,
         use_reloader=False,
     )
-

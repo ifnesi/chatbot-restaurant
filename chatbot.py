@@ -1,230 +1,110 @@
 import os
 import sys
-import glob
 import json
-import uuid
 import logging
 import argparse
 import datetime
 
 from dotenv import load_dotenv
+from threading import Thread
 from langchain_openai import ChatOpenAI
 from langchain.schema import SystemMessage, HumanMessage
 
-from faker import Faker
-from flask import Flask, render_template, request, session, redirect, url_for, jsonify
-from flask_login import (
-    UserMixin,
-    LoginManager,
-    current_user,
-    login_required,
-    login_user,
-    logout_user,
+from utils import (
+    KafkaClient,
+    initial_prompt,
+    sys_exc,
 )
-
-from utils import initial_prompt, sys_exc
-
-##################
-# Webapp (Flask) #
-##################
-app = Flask(
-    __name__,
-    static_folder="static",
-    template_folder="templates",
-)
-app.config["SECRET_KEY"] = "401338da-c002-48e3-a673-7db0096306ff"
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = "login"
-log = logging.getLogger("werkzeug")
-log.setLevel(logging.WARNING)
-
-# Global variables
-chatSessions = dict()
-chatMessages = dict()
-RAG_DATA = dict()
-for file in glob.glob(os.path.join("rag", "*.json")):
-    with open(file, "r") as f:
-        key = os.path.splitext(os.path.split(file)[-1])[0]
-        RAG_DATA[key] = json.loads(f.read())
 
 
 ###########
 # Classes #
 ###########
-class User(UserMixin):
-    def __init__(self, id: str) -> None:
-        super().__init__()
-        self.id = id
+class LoadRAG:
+    """Load RAG in memory"""
+
+    def __init__(self, topics) -> None:
+        self.rag = dict()
+        self.customer_profile = dict()
+        self.topics = topics
+
+    def consumer(self, kafka) -> None:
+        while True:
+            for topic, _, key, value in kafka.avro_string_consumer(
+                kafka.consumer_earliest,
+                self.topics,
+            ):
+                if topic == TOPIC_CUSTOMER_PROFILES:
+                    if value is None:
+                        self.customer_profile.pop(key, None)
+                        logging.info(f"Deleted profile for {key}")
+                    else:
+                        self.customer_profile[key] = value
+                        logging.info(f"Loaded profile for {key}: {json.dumps(value)}")
+
+                else:
+                    rag_name = topic.split("-")[-1]
+                    prefix, *suffix = rag_name.split("_")
+
+                    if prefix in ["menu", "kidsmenu"]:
+                        suffix = "_".join(suffix)
+                        if prefix not in self.rag.keys():
+                            self.rag[prefix] = dict()
+                        if suffix not in self.rag[prefix].keys():
+                            self.rag[prefix][suffix] = dict()
+                        if value is None:  # drop from RAG
+                            self.rag[prefix][suffix].pop(key, None)
+                        else:
+                            self.rag[prefix][suffix][key] = value
+
+                    else:
+                        if rag_name not in self.rag.keys():
+                            self.rag[rag_name] = dict()
+                        if value is None:  # drop from RAG
+                            self.rag[rag_name].pop(key, None)
+                        else:
+                            self.rag[rag_name][key] = value
+
+                    if value is None:
+                        logging.info(f"Deleted RAG for {key}")
+                    else:
+                        logging.info(f"Loaded RAG for {key}: {json.dumps(value)}")
 
 
-#################
-# Flask routing #
-#################
-@app.errorhandler(404)
-def page_not_found(e):
-    return (
-        render_template(
-            "page_not_found.html",
-            title="Page Not Found",
-        ),
-        404,
-    )
+####################
+# Global Variables #
+####################
+chatSessions = dict()
+chatMessages = dict()
 
+kafka = None
+customer_action_serialiser = None
 
-@login_manager.unauthorized_handler
-def unauthorized():
-    return redirect(url_for("login"))
-
-
-@login_manager.user_loader
-def load_user(customer_id):
-    return User(id=customer_id)
-
-
-@app.route("/login", methods=["GET"])
-def login():
-    if current_user.is_authenticated:
-        return redirect(url_for("chatbot"))
-    else:
-        return render_template(
-            "login.html",
-            restaurant_name=RAG_DATA["restaurant"].get("name"),
-            title="Login",
-        )
-
-
-@app.route("/login", methods=["POST"])
-def do_login():
-    # Session variables
-    fake = Faker()
-    request_form = dict(request.form)
-    session["waiter_name"] = fake.name()
-    session["customerID"] = uuid.uuid4().hex
-    session["customerName"] = (
-        request_form.get("customerName", "Anonymous").strip()[:32].strip()
-    )
-    session["ofLegalAge"] = request_form.get("ofLegalAge") == "yes"
-    session["restaurant_name"] = RAG_DATA["restaurant"].get("name")
-    request_form.pop("customerName", None)
-    request_form.pop("ofLegalAge", None)
-    session["allergens"] = list()
-    for key in request_form.keys():
-        session["allergens"].append(key)
-    if len(session["allergens"]) == 0:
-        session["allergens"].append("Nothing")
-
-    # LLM Session
-    chatSessions[session["customerID"]] = ChatOpenAI(
-        model="gpt-4-0125-preview",
-    )
-
-    # Login user
-    login_user(
-        User(session["customerID"]),
-        duration=datetime.timedelta(hours=1),
-        force=True,
-    )
-    return redirect(url_for("chatbot"))
-
-
-@app.route("/send-message", methods=["POST"])
-@login_required
-def send_message():
-    result = {
-        "waiter": "",
-    }
-    try:
-        request_form = request.get_json()
-        initial_message = request_form.get("initial_message")
-        customer_message = request_form.get("customer_message")
-        if initial_message:
-            chatMessages[session["customerID"]] = [
-                SystemMessage(content=initial_prompt(RAG_DATA, session["waiter_name"])),
-                HumanMessage(
-                    content=f"""We have a new customer, please greet they with a friendly message and show the main menu in a HTML table format making sure to also show the nutritional information, allergens and price as well as our discount and service tax policies. Customer name is {session["customerName"]}, customer is {"on or above 21 years old" if session["ofLegalAge"] else "under 21 years old"} and is allergic to: {", ".join(session["allergens"])}"""
-                ),
-            ]
-        elif customer_message:
-            chatMessages[session["customerID"]].append(
-                HumanMessage(
-                    f"Customer has send the message below. Please address it making sure to comply with all policies, no need to show the menu again unless if asked:\n{customer_message}"
-                )
-            )
-        response = chatSessions[session["customerID"]].invoke(
-            chatMessages[session["customerID"]],
-        )
-        result["waiter"] = response.content
-        chatMessages[session["customerID"]].append(response)
-    except Exception:
-        logging.error(sys_exc(sys.exc_info()))
-        result["waiter"] = "Sorry, something went wrong! Please try again"
-    return jsonify(result)
-
-
-@app.route("/logout", methods=["GET"])
-@login_required
-def logout():
-    chatSessions.pop(session["customerID"], None)
-    chatMessages.pop(session["customerID"], None)
-    logout_user()
-    session.clear()
-    return redirect(url_for("login"))
-
-
-@app.route("/", methods=["GET"])
-@login_required
-def chatbot():
-    return render_template(
-        "chatbot.html",
-        restaurant_name=RAG_DATA["restaurant"].get("name"),
-        title="Talk to us!",
-    )
+TOPIC_CHATBOT_RESPONSES = "chatbot-restaurant-chatbot_responses"
+TOPIC_CUSTOMER_ACTIONS = "chatbot-restaurant-customer_actions"
+TOPIC_CUSTOMER_PROFILES = "chatbot-restaurant-customer_profiles"
+TOPIC_RAG = "^chatbot-restaurant-rag-.*"
+rag = LoadRAG(topics=[TOPIC_CUSTOMER_PROFILES, TOPIC_RAG])
 
 
 ########
 # Main #
 ########
-def main(args):
-    # Load env variables
-    load_dotenv(args.env_vars)
-
-    # Start web server
-    app.run(
-        host=args.host,
-        port=args.port,
-        debug=True,
-    )
-
-
 if __name__ == "__main__":
+    FILE_APP = os.path.splitext(os.path.split(__file__)[-1])[0]
     logging.basicConfig(
-        format="%(asctime)s.%(msecs)03d [%(levelname)s]: %(message)s",
+        format=f"[{FILE_APP}] %(asctime)s.%(msecs)03d [%(levelname)s]: %(message)s",
         level=logging.INFO,
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    parser = argparse.ArgumentParser(description="Chatbot - Web Application")
+    parser = argparse.ArgumentParser(description="Chatbot - Backend Application")
     parser.add_argument(
         "--config",
         dest="config",
         type=str,
         help="Enter config filename (default: config/localhost.ini)",
         default=os.path.join("config", "localhost.ini"),
-    )
-    parser.add_argument(
-        "--host",
-        dest="host",
-        type=str,
-        help="Hostname to listen on (default: 127.0.0.1)",
-        default="127.0.0.1",
-    )
-    parser.add_argument(
-        "--port",
-        dest="port",
-        type=int,
-        help="Port of the webserver (default: 8888)",
-        default=8888,
     )
     parser.add_argument(
         "--env-vars",
@@ -237,8 +117,99 @@ if __name__ == "__main__":
         "--client-id",
         dest="client_id",
         type=str,
-        help="Producer/Consumer's Group/Client ID prefix (default: chatbot-webapp)",
-        default="chatbot-webapp",
+        help="Producer/Consumer's Group/Client ID prefix (default: chatbot-beapp)",
+        default="chatbot-app",
     )
 
-    main(parser.parse_args())
+    args = parser.parse_args()
+
+    # Load env variables
+    load_dotenv(args.env_vars)
+
+    kafka = KafkaClient(
+        args.config,
+        args.client_id,
+        set_admin=True,
+        set_producer=True,
+        set_consumer_latest=True,
+        set_consumer_earliest=True,
+    )
+
+    # Start RAG / Customer Profile Consumer thread
+    Thread(
+        target=rag.consumer,
+        args=(kafka,),
+    ).start()
+
+    # Process messages submitted by the customers
+    while True:
+        for _, _, key, value in kafka.avro_string_consumer(
+            kafka.consumer_latest,
+            [TOPIC_CUSTOMER_ACTIONS],
+        ):
+            counter = value["counter"]
+            username = value["username"]
+
+            if value["counter"] == -1:  # Logout message
+                chatSessions.pop(key, None)
+                chatMessages.pop(key, None)
+                logging.info(f"{username} has logged out!")
+
+            else:
+                try:
+
+                    if value["counter"] == 0:  # Initial message
+                        logging.info(f"{username} has logged in!")
+
+                        # LLM Session
+                        chatSessions[key] = ChatOpenAI(
+                            model="gpt-3.5-turbo-16k",
+                        )
+
+                        waiter_name = value["waiter_name"]
+                        customer_name = rag.customer_profile[username]["full_name"]
+                        customer_dob = rag.customer_profile[username]["dob"]
+                        customer_allergies = (
+                            rag.customer_profile[username]["allergies"] or "Nothing"
+                        )
+                        chatMessages[key] = [
+                            SystemMessage(content=initial_prompt(rag.rag, waiter_name)),
+                            HumanMessage(
+                                content=f"""We have a new customer, please greet they with a friendly message\nCustomer name is {customer_name}, customer was born in {customer_dob} and is allergic to {customer_allergies}"""
+                            ),
+                        ]
+
+                    else:  # customer message
+                        customer_message = value["message"]
+                        logging.info(f"Message received from {username}: {customer_message}")
+
+                        chatMessages[key].append(
+                            HumanMessage(
+                                f"Customer has send the message below. Please address it making sure to comply with all restaurant policies:\n{customer_message}"
+                            )
+                        )
+
+                    response = chatSessions[key].invoke(chatMessages[key])
+                    chatMessages[key].append(response)
+                    response = response.content
+
+                except Exception:
+                    logging.error(sys_exc(sys.exc_info()))
+                    response = (
+                        "<span class='error_message'>Sorry, something went wrong on the back-end! Please try again</span>"
+                    )
+
+                finally:  # publish message on the response topic
+                    try:
+                        kafka.producer.poll(0.0)
+                        kafka.producer.produce(
+                            topic=TOPIC_CHATBOT_RESPONSES,
+                            key=kafka.string_serializer(f"{key}-{counter}"),
+                            value=kafka.string_serializer(response),
+                            on_delivery=kafka.delivery_report,
+                        )
+                    except Exception:
+                        logging.error(sys_exc(sys.exc_info()))
+                    finally:
+                        if kafka.producer:
+                            kafka.producer.flush()

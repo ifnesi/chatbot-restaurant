@@ -1,5 +1,6 @@
 import sys
 import hmac
+import json
 import base64
 import signal
 import hashlib
@@ -70,7 +71,7 @@ class KafkaClient:
                 "group.id": f"{client_id}-consumer-earliest",
                 "client.id": f"{client_id}-consumer-earliest-01",
                 "auto.offset.reset": "earliest",
-                "enable.auto.commit": False,
+                "enable.auto.commit": "false",
             }
             self._consumer_config_earliest.update(dict(self._config["kafka"]))
             self.consumer_earliest = Consumer(self._consumer_config_earliest)
@@ -81,7 +82,7 @@ class KafkaClient:
                 "group.id": f"{client_id}-consumer-latest",
                 "client.id": f"{client_id}-consumer-latest-01",
                 "auto.offset.reset": "earliest",
-                "enable.auto.commit": False,
+                "enable.auto.commit": "true",
             }
             self._consumer_config_latest.update(dict(self._config["kafka"]))
             self.consumer_latest = Consumer(self._consumer_config_latest)
@@ -180,7 +181,7 @@ class KafkaClient:
         else:
             logging.info(f"Topic '{topic}' already exists")
 
-    def avro_consumer(
+    def avro_string_consumer(
         self,
         consumer,
         topics: list,
@@ -191,27 +192,56 @@ class KafkaClient:
 
         while True:
             try:
-                msg = consumer.poll(timeout=0.25)
-                if msg is not None:
-                    if msg.error():
-                        raise KafkaException(msg.error())
-                    else:
-                        message = avro_deserialiser(
-                            msg.value(),
-                            SerializationContext(
+                if consumer:
+                    msg = consumer.poll(timeout=0.25)
+                    if msg is not None:
+                        if msg.error():
+                            raise KafkaException(msg.error())
+                        else:
+                            if msg.value() is not None:
+                                if msg.value()[0] == 0:  # Avro serialised
+                                    message = avro_deserialiser(
+                                        msg.value(),
+                                        SerializationContext(
+                                            msg.topic(),
+                                            MessageField.VALUE,
+                                        ),
+                                    )
+                                else:
+                                    message = self.string_deserializer(msg.value())
+                            else:
+                                message = msg.value()
+
+                            yield (
                                 msg.topic(),
-                                MessageField.VALUE,
-                            ),
-                        )
-                        yield (
-                            msg.topic(),
-                            msg.headers(),
-                            self.string_deserializer(msg.key()),
-                            message,
-                        )
+                                msg.headers(),
+                                self.string_deserializer(msg.key()),
+                                message,
+                            )
 
             except Exception:
                 logging.error(sys_exc(sys.exc_info()))
+
+
+class CustomerProfiles:
+    """Load customer profile in memory"""
+
+    def __init__(self, topics) -> None:
+        self.data = dict()
+        self.topics = topics
+
+    def consumer(self, kafka) -> None:
+        while True:
+            for _, _, key, value in kafka.avro_string_consumer(
+                kafka.consumer_earliest,
+                self.topics,
+            ):
+                if value is None:
+                    self.data.pop(key, None)
+                    logging.info(f"Deleted profile for {key}")
+                else:
+                    self.data[key] = value
+                    logging.info(f"Loaded profile for {key}: {json.dumps(value)}")
 
 
 def sys_exc(exc_info) -> str:
@@ -236,9 +266,9 @@ def initial_prompt(
         initial_prompt += f"- {key}: {value}\n"
 
     initial_prompt += "3. Main menu:\n"
-    for n, key in enumerate(rag_data["main_menu"].keys()):
-        initial_prompt += f"3.{n+1} {key}:\n"
-        for item in rag_data["main_menu"][key].values():
+    for key in sorted(rag_data["menu"].keys()):
+        initial_prompt += f"3.{key}:\n"
+        for item in rag_data["menu"][key].values():
             initial_prompt += f"- {item['name']} ({item['description']}): "
             details = list()
             for k, v in item.items():
@@ -247,9 +277,9 @@ def initial_prompt(
             initial_prompt += f"{', '.join(details)}\n"
 
     initial_prompt += "4. Kids menu:\n"
-    for n, key in enumerate(rag_data["kids_menu"].keys()):
-        initial_prompt += f"4.{n+1} {key}:\n"
-        for item in rag_data["kids_menu"][key].values():
+    for key in sorted(rag_data["kidsmenu"].keys()):
+        initial_prompt += f"4.{key}:\n"
+        for item in rag_data["kidsmenu"][key].values():
             initial_prompt += f"- {item['name']} ({item['description']}): "
             details = list()
             for k, v in item.items():
@@ -257,7 +287,7 @@ def initial_prompt(
                     details.append(f"{k}: {v}")
             initial_prompt += f"{', '.join(details)}\n"
 
-    initial_prompt += "5. As an AI Assistant you must comply with all policies below:\n"
+    initial_prompt += "5. As an AI Assistant you MUST comply with all policies below:\n"
     for key, value in rag_data["ai_rules"].items():
         initial_prompt += f"- {key}: {value}\n"
 

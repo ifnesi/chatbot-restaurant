@@ -46,41 +46,6 @@ log = logging.getLogger("werkzeug")
 log.setLevel(logging.INFO)
 
 
-####################
-# Customer Actions #
-####################
-TOPIC_CUSTOMER_ACTIONS = "chatbot-restaurant-customer_actions"
-TOPIC_CHATBOT_RESPONSES = "chatbot-restaurant-chatbot_responses"
-TOPIC_CUSTOMER_PROFILES = "chatbot-restaurant-customer_profiles"
-
-# Restaurant name
-with open(os.path.join("rag", "restaurant.json"), "r") as f:
-    restaurant_data = json.loads(f.read())
-RESTAURANT_NAME = restaurant_data["name"]
-
-#############
-# Functions #
-#############
-def customer_profiles_consumer(kafka) -> None:
-    global customer_profiles
-    topics = [TOPIC_CUSTOMER_PROFILES]
-    while True:
-        for _, _, key, value in kafka.avro_consumer(kafka.consumer_earliest, topics):
-            customer_profiles[key] = value
-            logging.info(f"Load profile for {key}: {json.dumps(value)}")
-
-
-def chatbot_response_consumer(kafka) -> None:
-    global chatbot_responses
-    topics = [TOPIC_CHATBOT_RESPONSES]
-    while True:
-        for _, _, key, value in kafka.avro_consumer(kafka.consumer_latest, topics):
-            logging.info(f"Message received for session_id {key}: {json.dumps(value)}")
-            counter = value["counter"]
-            value.pop("counter")
-            chatbot_responses[f"{key}-{counter}"] = value
-
-
 ###########
 # Classes #
 ###########
@@ -88,6 +53,50 @@ class User(UserMixin):
     def __init__(self, id: str) -> None:
         super().__init__()
         self.id = id
+
+class CustomerProfiles:
+    def __init__(self, topics) -> None:
+        self.data = dict()
+        self.topics = topics
+
+    def consumer(self, kafka) -> None:
+        while True:
+            for _, _, key, value in kafka.avro_consumer(kafka.consumer_earliest, self.topics):
+                self.data[key] = value
+                logging.info(f"Loaded profile for {key}: {json.dumps(value)}")
+
+class ChatbotResponses:
+    def __init__(self, topics) -> None:
+        self.data = dict()
+        self.topics = topics
+
+    def consumer(self, kafka) -> None:
+        while True:
+            for _, _, key, value in kafka.avro_consumer(kafka.consumer_latest, self.topics):
+                logging.info(f"Message received for session_id {key}: {json.dumps(value)}")
+                counter = value["counter"]
+                value.pop("counter")
+                self.data[f"{key}-{counter}"] = value
+
+
+####################
+# Global Variables #
+####################
+kafka = None
+customer_action_serialiser = None
+
+TOPIC_CUSTOMER_PROFILES = "chatbot-restaurant-customer_profiles"
+customer_profiles = CustomerProfiles(topics=[TOPIC_CUSTOMER_PROFILES])
+
+TOPIC_CHATBOT_RESPONSES = "chatbot-restaurant-chatbot_responses"
+chatbot_responses = ChatbotResponses(topics=[TOPIC_CHATBOT_RESPONSES])
+
+TOPIC_CUSTOMER_ACTIONS = "chatbot-restaurant-customer_actions"
+
+# Restaurant name
+with open(os.path.join("rag", "restaurant.json"), "r") as f:
+    restaurant_data = json.loads(f.read())
+RESTAURANT_NAME = restaurant_data["name"]
 
 
 #################
@@ -125,18 +134,25 @@ def login():
             title="Login",
         )
 
+@app.route("/profiles", methods=["GET"])
+def profiles():
+    return render_template(
+        "profiles.html",
+        restaurant_name=RESTAURANT_NAME,
+        title="Profiles",
+        profiles=customer_profiles.data,
+    )
+
 
 @app.route("/login", methods=["POST"])
 def do_login():
-    global customer_profiles
-
     request_form = dict(request.form)
     username = request_form["username"]
     password = request_form["password"]
 
-    if username in customer_profiles.keys():
+    if username in customer_profiles.data.keys():
         password_salt = os.environ.get("PASSWORD_SALT")
-        hashed_password = customer_profiles[username]["hashed_password"]
+        hashed_password = customer_profiles.data[username]["hashed_password"]
         if assess_password(
             password_salt,
             hashed_password,
@@ -147,7 +163,7 @@ def do_login():
             session["waiter_name"] = fake.name()
             session["session_id"] = uuid.uuid4().hex
             session["restaurant_name"] = RESTAURANT_NAME
-            session["customer_name"] = customer_profiles[username]["full_name"]
+            session["customer_name"] = customer_profiles.data[username]["full_name"]
             session["username"] = username
             session["counter"] = 0
             login_user(
@@ -163,7 +179,7 @@ def do_login():
                     "login.html",
                     restaurant_name=RESTAURANT_NAME,
                     title="Login",
-                    error_message="Invalid password, please try again -- since this is a demo, the password is the same as the username &#128521;",
+                    error_message="Invalid password (as this is a demo, the password is the username &#128521;)",
                 ),
                 401,
             )
@@ -183,8 +199,6 @@ def do_login():
 @app.route("/send-message", methods=["POST"])
 @login_required
 def send_message():
-    global kafka, customer_action_serialiser, chatbot_responses
-
     result = {
         "waiter": "",
     }
@@ -227,20 +241,20 @@ def send_message():
         response_key = f"{session['session_id']}-{session['counter']-1}"
         start_timer = time.time()
         timed_out = False
-        while response_key not in chatbot_responses.keys():
+        while response_key not in chatbot_responses.data.keys():
             time.sleep(0.1)
             if time.time() - start_timer > 25:
-                result["waiter"] = "Sorry, your message timed out! Please try again"
+                result["waiter"] = "<span class='error_message'>Sorry, your message timed out! Please try again</span>"
                 timed_out = True
                 break
 
         if not timed_out:
-            result["waiter"] = chatbot_responses[response_key]["message"]
-            chatbot_responses.pop(response_key)
+            result["waiter"] = chatbot_responses.data[response_key]["message"]
+            chatbot_responses.data.pop(response_key)
 
     except Exception:
         logging.error(sys_exc(sys.exc_info()))
-        result["waiter"] = "Sorry, something went wrong! Please try again"
+        result["waiter"] = "<span class='error_message'>Sorry, something went wrong! Please try again</span>"
 
     return jsonify(result)
 
@@ -269,8 +283,10 @@ def logout():
         )
         logging.info("Flushing records...")
         kafka.producer.flush()
+
     except Exception:
         logging.error(sys_exc(sys.exc_info()))
+
     finally:
         logout_user()
         session.clear()
@@ -290,72 +306,6 @@ def chatbot():
 ########
 # Main #
 ########
-def main(args):
-    global kafka, customer_action_serialiser, customer_profiles, chatbot_responses
-
-    # Customer Profiles (consumer thread)
-    customer_profiles = dict()
-
-    # Chatbot Responses (consumer thread)
-    chatbot_responses = dict()
-
-    kafka = KafkaClient(
-        args.config,
-        args.client_id,
-        set_admin=True,
-        set_producer=True,
-        set_consumer_latest=True,
-        set_consumer_earliest=True,
-    )
-    with open(os.path.join("schemas", "customer_message.avro"), "r") as f:
-        schema_str = f.read()
-    customer_action_serialiser = kafka.avro_serialiser(schema_str)
-
-    # Create customer actions topic
-    try:
-        kafka.create_topic(
-            TOPIC_CUSTOMER_ACTIONS,
-            cleanup_policy="delete",
-        )
-    except Exception:
-        logging.error(sys_exc(sys.exc_info()))
-        sys.exit(-1)
-
-    # Create chatbot responses topic
-    try:
-        kafka.create_topic(
-            TOPIC_CHATBOT_RESPONSES,
-            cleanup_policy="delete",
-        )
-    except Exception:
-        logging.error(sys_exc(sys.exc_info()))
-        sys.exit(-1)
-
-    # Start Customer Profiles Consumer thread
-    Thread(
-        target=customer_profiles_consumer,
-        args=(kafka,),
-        daemon=False,
-    ).start()
-
-    # Start chatbot responses Consumer thread
-    Thread(
-        target=chatbot_response_consumer,
-        args=(kafka,),
-        daemon=False,
-    ).start()
-
-    # Load env variables
-    load_dotenv(args.env_vars)
-
-    # Start web server
-    app.run(
-        host=args.host,
-        port=args.port,
-        debug=True,
-    )
-
-
 if __name__ == "__main__":
     logging.basicConfig(
         format="%(asctime)s.%(msecs)03d [%(levelname)s]: %(message)s",
@@ -400,4 +350,63 @@ if __name__ == "__main__":
         default="chatbot-webapp",
     )
 
-    main(parser.parse_args())
+    args = parser.parse_args()
+
+    # Load env variables
+    load_dotenv(args.env_vars)
+
+    kafka = KafkaClient(
+        args.config,
+        args.client_id,
+        set_admin=True,
+        set_producer=True,
+        set_consumer_latest=True,
+        set_consumer_earliest=True,
+    )
+
+    with open(os.path.join("schemas", "customer_message.avro"), "r") as f:
+        schema_str = f.read()
+    customer_action_serialiser = kafka.avro_serialiser(schema_str)
+
+    # Create customer actions topic
+    try:
+        kafka.create_topic(
+            TOPIC_CUSTOMER_ACTIONS,
+            cleanup_policy="delete",
+        )
+    except Exception:
+        logging.error(sys_exc(sys.exc_info()))
+        sys.exit(-1)
+
+    # Create chatbot responses topic
+    try:
+        kafka.create_topic(
+            TOPIC_CHATBOT_RESPONSES,
+            cleanup_policy="delete",
+        )
+    except Exception:
+        logging.error(sys_exc(sys.exc_info()))
+        sys.exit(-1)
+
+    # Start Customer Profiles Consumer thread
+    Thread(
+        target=customer_profiles.consumer,
+        args=(kafka,),
+        daemon=False,
+    ).start()
+
+    # Start chatbot responses Consumer thread
+    Thread(
+        target=chatbot_responses.consumer,
+        args=(kafka,),
+        daemon=False,
+    ).start()
+
+    # Start web server
+    app.run(
+        host=args.host,
+        port=args.port,
+        debug=True,
+        use_reloader=False,
+    )
+

@@ -64,30 +64,27 @@ class KafkaClient:
             # Get list of topics
             self.topic_list = self.get_topics()
 
-        # Consumers
-        self._consumer_config = {
-            "group.id": f"{client_id}-consumer",
-            "client.id": f"{client_id}-consumer-01",
-        }
-        # Earliest
-        self._consumer_config.update(dict(self._config["kafka"]))
+        # Consumer Earliest
         if set_consumer_earliest:
-            consumer_config = {
+            self._consumer_config_earliest = {
+                "group.id": f"{client_id}-consumer-earliest",
+                "client.id": f"{client_id}-consumer-earliest-01",
                 "auto.offset.reset": "earliest",
                 "enable.auto.commit": False,
-                **self._consumer_config,
             }
-            self.consumer_earliest = Consumer(consumer_config)
+            self._consumer_config_earliest.update(dict(self._config["kafka"]))
+            self.consumer_earliest = Consumer(self._consumer_config_earliest)
 
-        # Latest
-        self._consumer_config.update(dict(self._config["kafka"]))
+        # Consumer Latest
         if set_consumer_latest:
-            consumer_config = {
-                "auto.offset.reset": "latest",
-                "enable.auto.commit": True,
-                **self._consumer_config,
+            self._consumer_config_latest = {
+                "group.id": f"{client_id}-consumer-latest",
+                "client.id": f"{client_id}-consumer-latest-01",
+                "auto.offset.reset": "earliest",
+                "enable.auto.commit": False,
             }
-            self.consumer_latest = Consumer(consumer_config)
+            self._consumer_config_latest.update(dict(self._config["kafka"]))
+            self.consumer_latest = Consumer(self._consumer_config_latest)
 
     def signal_handler(
         self,
@@ -98,24 +95,27 @@ class KafkaClient:
             logging.info("Flushing messages...")
             try:
                 self.producer.flush()
+                self.producer = None
             except Exception:
                 logging.error(sys_exc(sys.exc_info()))
 
         if self.consumer_earliest:
             logging.info(
-                f"Closing consumer {self._consumer_config['client.id']} ({self._consumer_config['group.id']})..."
+                f"Closing consumer {self._consumer_config_earliest['client.id']} ({self._consumer_config_earliest['group.id']})..."
             )
             try:
                 self.consumer_earliest.close()
+                self.consumer_earliest = None
             except Exception:
                 logging.error(sys_exc(sys.exc_info()))
 
         if self.consumer_latest:
             logging.info(
-                f"Closing consumer {self._consumer_config['client.id']} ({self._consumer_config['group.id']})..."
+                f"Closing consumer {self._consumer_config_latest['client.id']} ({self._consumer_config_latest['group.id']})..."
             )
             try:
                 self.consumer_latest.close()
+                self.consumer_latest = None
             except Exception:
                 logging.error(sys_exc(sys.exc_info()))
 
@@ -189,9 +189,6 @@ class KafkaClient:
         avro_deserialiser = self.avro_deserialiser(schema_str=schema_str)
         consumer.subscribe(topics)
 
-        logging.info(
-            f"Started Avro Consumer {self._consumer_config['client.id']} ({self._consumer_config['group.id']}) on topic(s): {', '.join(topics)}"
-        )
         while True:
             try:
                 msg = consumer.poll(timeout=0.25)
@@ -214,9 +211,7 @@ class KafkaClient:
                         )
 
             except Exception:
-                logging.error(
-                    f"avro_consumer ({self._consumer_config['group.id']}): {sys_exc(sys.exc_info())}"
-                )
+                logging.error(sys_exc(sys.exc_info()))
 
 
 def sys_exc(exc_info) -> str:

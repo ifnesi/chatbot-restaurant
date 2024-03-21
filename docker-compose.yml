@@ -6,6 +6,7 @@ services:
     image: confluentinc/cp-zookeeper:$CONFLUENT_PLATFORM_VERSION
     hostname: zookeeper
     container_name: zookeeper
+    platform: $PLATFORM
     ports:
       - "2181:2181"
     environment:
@@ -16,6 +17,7 @@ services:
     image: confluentinc/cp-server:$CONFLUENT_PLATFORM_VERSION
     hostname: broker
     container_name: broker
+    platform: $PLATFORM
     depends_on:
       - zookeeper
     ports:
@@ -45,6 +47,7 @@ services:
     image: confluentinc/cp-schema-registry:$CONFLUENT_PLATFORM_VERSION
     hostname: schema-registry
     container_name: schema-registry
+    platform: $PLATFORM
     depends_on:
       - broker
     ports:
@@ -58,6 +61,7 @@ services:
     image: confluentinc/cp-enterprise-control-center:$CONFLUENT_PLATFORM_VERSION
     hostname: control-center
     container_name: control-center
+    platform: $PLATFORM
     depends_on:
       - broker
       - schema-registry
@@ -79,6 +83,7 @@ services:
     image: confluentinc/cp-ksqldb-server:$CONFLUENT_PLATFORM_VERSION
     hostname: ksqldb-server
     container_name: ksqldb-server
+    platform: $PLATFORM
     depends_on:
       - broker
     ports:
@@ -100,6 +105,7 @@ services:
   ksqldb-cli:
     image: confluentinc/cp-ksqldb-cli:$CONFLUENT_PLATFORM_VERSION
     container_name: ksqldb-cli
+    platform: $PLATFORM
     depends_on:
       - broker
       - ksqldb-server

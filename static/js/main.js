@@ -6,7 +6,7 @@ $( document ).ready(function() {
     //$(window).on("unload", reaload_alert());
 
     // Bind ENTER to message box
-    $("#customer_message").on('keyup', function (event) {
+    $("#customer_message").on('keydown', function (event) {
         if (event.keyCode === 13) {
             send_message(0);
         }
@@ -26,7 +26,7 @@ function reaload_alert() {
 
 function send_message(initial) {
     var spanID = "_id-" + parseInt((new Date()).getTime()) + parseInt(Math.random() * 10000);
-    var chat_history= '<p><img src="/static/images/customer.png" class="p-1" height="28px"></img><span class="badge bg-primary text-light">' + waiter_name + '</span></br><span id="' + spanID + '"><span class="typing blink">Typing...</span></span></p>';
+    var chat_history = '<p><img src="/static/images/customer.png" class="p-1" height="28px"></img><span class="badge bg-primary text-light">' + waiter_name + '</span></br><span id="' + spanID + '"><span class="typing blink">Typing...</span></span></p>';
     var customer_message = $("#customer_message").val();
     if (customer_message && initial == 0) {
         $("#customer_message").val("");
@@ -44,11 +44,12 @@ function send_message(initial) {
         dataType: "json",
         data: JSON.stringify({
             initial_message: initial,
-            customer_message: customer_message
+            customer_message: customer_message,
+            span_id: spanID,
         }),
         success: function(data) {
             $("#customer_message").focus();
-            $("#" + spanID).html(data.waiter);
+            $("#" + data.span_id).html(data.waiter);
         }
     });
 }

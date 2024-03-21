@@ -9,6 +9,10 @@
             "type": "string"
         },
         {
+            "name": "waiter_name",
+            "type": "string"
+        },
+        {
             "name": "message",
             "type": [
                 "null",

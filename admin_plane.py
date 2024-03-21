@@ -7,7 +7,13 @@ import argparse
 from dotenv import load_dotenv
 from configparser import ConfigParser
 
-from utils import KafkaClient, SerializationContext, MessageField, hash_password, sys_exc
+from utils import (
+    KafkaClient,
+    SerializationContext,
+    MessageField,
+    hash_password,
+    sys_exc,
+)
 
 
 def main(args):
@@ -138,8 +144,9 @@ def main(args):
 
 
 if __name__ == "__main__":
+    FILE_APP = os.path.splitext(os.path.split(__file__)[-1])[0]
     logging.basicConfig(
-        format="%(asctime)s.%(msecs)03d [%(levelname)s]: %(message)s",
+        format=f"[{FILE_APP}] %(asctime)s.%(msecs)03d [%(levelname)s]: %(message)s",
         level=logging.INFO,
         datefmt="%Y-%m-%d %H:%M:%S",
     )

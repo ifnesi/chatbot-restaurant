@@ -1,5 +1,5 @@
 {
-    "starters": {
+    "1.starters": {
         "tomato-bruschetta": {
             "name": "Tomato Bruschetta",
             "description": "Grilled bread topped with fresh tomatoes, garlic, and basil",
@@ -29,19 +29,9 @@
             "protein": "15g",
             "allergens": "Gluten, Shellfish",
             "price": 9
-        },
-        "stuffed-mushrooms": {
-            "name": "Stuffed Mushrooms",
-            "description": "Mushrooms stuffed with a garlic herb cream cheese mixture, then baked",
-            "calories": "150 kcal",
-            "fat": "9g",
-            "carbohydrates": "10g",
-            "protein": "5g",
-            "allergens": "Dairy",
-            "price": 7
         }
     },
-    "mains": {
+    "2.mains": {
         "beef-burger": {
             "name": "Beef Burger",
             "description": "Grass-fed beef patty with lettuce, tomato, and cheese, served on a brioche bun",
@@ -83,7 +73,7 @@
             "price": 10
         }
     },
-    "alcoholic-drinks": {
+    "3.alcoholic_drinks": {
         "craft-beer": {
             "name": "Craft Beer",
             "description": "Locally brewed IPA with citrus and pine notes",
@@ -104,16 +94,6 @@
             "allergens": "Sulfites",
             "price": 7
         },
-        "gin-tonic": {
-            "name": "Gin Tonic",
-            "description": "Classic gin and tonic with a lime wedge for garnish",
-            "calories": "120 kcal",
-            "fat": "0g",
-            "carbohydrates": "4g",
-            "protein": "0g",
-            "allergens": null,
-            "price": 8
-        },
         "white-wine": {
             "name": "Glass of White Wine (125 ml)",
             "description": "Crisp and refreshing white wine with hints of apple and pear",
@@ -125,7 +105,7 @@
             "price": 7
         }
     },
-    "non-alcoholic-drinks": {
+    "4.non_alcoholic_drinks": {
         "lemonade": {
             "name": "Lemonade",
             "description": "Freshly squeezed lemonade, sweetened with a touch of honey",
@@ -166,16 +146,6 @@
             "allergens": null,
             "price": 2
         },
-        "still-water": {
-            "name": "Still Water (500 ml)",
-            "description": "Still spring water with a choice of lemon or lime",
-            "calories": "0 kcal",
-            "fat": "0g",
-            "carbohydrates": "0g",
-            "protein": "0g",
-            "allergens": null,
-            "price": 1.5
-        },
         "tap-water": {
             "name": "Tap Water (500 ml)",
             "description": "Regular tap water",
@@ -187,7 +157,7 @@
             "price": 0
         }
     },
-    "hot-drinks": {
+    "5.hot_drinks": {
         "coffee": {
             "name": "Coffee",
             "description": "Freshly brewed coffee from single-origin beans",
@@ -217,19 +187,9 @@
             "protein": "8g",
             "allergens": "Dairy",
             "price": 3
-        },
-        "chai-latte": {
-            "name": "Chai Latte",
-            "description": "Spiced tea mixed with steamed milk and a touch of sweetness",
-            "calories": "210 kcal",
-            "fat": "7g",
-            "carbohydrates": "35g",
-            "protein": "8g",
-            "allergens": "Dairy",
-            "price": 4
         }
     },
-    "desserts": {
+    "6.desserts": {
         "chocolate-lava-cake": {
             "name": "Chocolate Lava Cake",
             "description": "Warm, gooey chocolate cake with a molten chocolate center, served with vanilla ice cream",
@@ -259,16 +219,6 @@
             "protein": "3g",
             "allergens": "Gluten, Dairy",
             "price": 5
-        },
-        "panna-cotta": {
-            "name": "Panna Cotta",
-            "description": "Smooth and creamy panna cotta, served with a berry compote",
-            "calories": "270 kcal",
-            "fat": "18g",
-            "carbohydrates": "25g",
-            "protein": "4g",
-            "allergens": "Dairy",
-            "price": 6.5
         }
     }
 }

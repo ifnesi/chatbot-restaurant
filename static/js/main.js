@@ -1,20 +1,20 @@
-var waiterName;
-var customerName;
+var waiter_name;
+var customer_name;
 
 $( document ).ready(function() {
     // Alert when trying to leave/refresh
     //$(window).on("unload", reaload_alert());
 
     // Bind ENTER to message box
-    $("#customerMessage").on('keyup', function (event) {
+    $("#customer_message").on('keyup', function (event) {
         if (event.keyCode === 13) {
             send_message(0);
         }
     });
     
     // Send initial message
-    waiterName = $("#waiterName").val();
-    customerName = $("#customerName").val();
+    waiter_name = $("#waiter_name").val();
+    customer_name = $("#customer_name").val();
     send_message(1);
 });
 
@@ -26,11 +26,11 @@ function reaload_alert() {
 
 function send_message(initial) {
     var spanID = "_id-" + parseInt((new Date()).getTime()) + parseInt(Math.random() * 10000);
-    var chat_history= '<p><img src="/static/images/customer.png" class="p-1" height="28px"></img><span class="badge bg-primary text-light">' + waiterName + '</span></br><span id="' + spanID + '"><span class="typing">Typing...</span></span></p>';
-    var customerMessage = $("#customerMessage").val();
-    if (customerMessage && initial == 0) {
-        $("#customerMessage").val("");
-        chat_history = '<p><img src="/static/images/customer.png" class="p-1" height="28px"></img><span class="badge bg-warning text-dark">' + customerName + '</span></br>' + customerMessage + '</p>' + chat_history;
+    var chat_history= '<p><img src="/static/images/customer.png" class="p-1" height="28px"></img><span class="badge bg-primary text-light">' + waiter_name + '</span></br><span id="' + spanID + '"><span class="typing">Typing...</span></span></p>';
+    var customer_message = $("#customer_message").val();
+    if (customer_message && initial == 0) {
+        $("#customer_message").val("");
+        chat_history = '<p><img src="/static/images/customer.png" class="p-1" height="28px"></img><span class="badge bg-warning text-dark">' + customer_name + '</span></br>' + customer_message + '</p>' + chat_history;
     }
     $("#chat-history").append(chat_history);
     var textarea = document.getElementById("chat-history");
@@ -43,11 +43,11 @@ function send_message(initial) {
         contentType: "application/json; charset=utf-8",
         dataType: "json",
         data: JSON.stringify({
-            initialMessage: initial,
-            customerMessage: customerMessage
+            initial_message: initial,
+            customer_message: customer_message
         }),
         success: function(data) {
-            $("#customerMessage").focus();
+            $("#customer_message").focus();
             $("#" + spanID).html(data.waiter);
         }
     });

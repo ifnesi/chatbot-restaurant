@@ -20,13 +20,18 @@ main > .container {
   padding: 80px 15px 0;
 }
 
+@keyframes blinker {
+  50% {
+    opacity: 0;
+  }
+}
+
 .typing {
   animation: blinker 1s linear infinite;
   color: dimgray;
 }
 
-@keyframes blinker {
-  50% {
-    opacity: 0;
-  }
+.error_message {
+  animation: blinker 1s linear infinite;
+  color: crimson;
 }

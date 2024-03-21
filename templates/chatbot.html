@@ -9,7 +9,7 @@
 <header>
     <nav class="navbar navbar-expand-lg navbar-light fixed-top bg-light">
         <div class="container-fluid">
-            <a class="navbar-brand" href="#"><img src="{{ url_for('static', filename='images/favicon.png') }}" height="44px"></img>&nbsp;{{ restaurantName }}</a>
+            <a class="navbar-brand" href="#"><img src="{{ url_for('static', filename='images/favicon.png') }}" height="44px"></img>&nbsp;{{ restaurant_name }}</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -18,7 +18,7 @@
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Chat Menu</a>
                         <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-                            <li><a class="dropdown-item disabled" href="#">{{session.customerName}}</a></li>
+                            <li><a class="dropdown-item disabled" href="#">{{session.customer_name}}</a></li>
                             <li><a class="dropdown-item" href="/logout">Logout</a></li>
                         </ul>
                     </li>
@@ -40,7 +40,7 @@
     <div class="container">
         <div class="row">
             <div class="col-10">
-                <input type="text" class="form-control" name="customerMessage" id="customerMessage" placeholder="Message..." autocomplete="off" onkeydown="send_message_key();" required>
+                <input type="text" class="form-control" name="customer_message" id="customer_message" placeholder="Message..." autocomplete="off" onkeydown="send_message_key();" required>
             </div>
             <div class="col-2">
                 <button class="btn btn-warning" onclick="send_message(0);">Send</button>
@@ -48,6 +48,6 @@
         </div>
     </div>
 </footer>
-<input type="hidden" id="customerName" value="{{session.customerName}}"/>
-<input type="hidden" id="waiterName" value="{{session.waiterName}}" />
+<input type="hidden" id="customer_name" value="{{session.customer_name}}"/>
+<input type="hidden" id="waiter_name" value="{{session.waiter_name}}" />
 {% endblock %}

@@ -28,7 +28,9 @@ source .env
 if [[ "$1" == "--stop" || "$1" == "-p" ]]; then
   # Stop demo
   logging "Stopping docker compose"
+  echo ""
   if docker compose down ; then
+    echo ""
     logging "Demo successfully stopped"
     exit 0
   else
@@ -66,6 +68,8 @@ if ! docker compose up -d --build ; then
     exit -1
 fi
 
+echo ""
+
 # Waiting services to be ready
 logging "Waiting Schema Registry to be ready" "INFO" -n
 while [[ "$(curl -s -o /dev/null -w ''%{http_code}'' http://$HOST:8081)" != "200" ]]
@@ -83,7 +87,7 @@ do
 done
 
 echo ""
-logging "Waiting HTTP Server to be ready" "INFO" -n
+logging "Waiting Chatbot Web application to be ready" "INFO" -n
 while [[ "$(curl -s -o /dev/null -w ''%{http_code}'' http://$HOST:8888/login)" != "200" ]]
 do
     echo -n "."
@@ -91,10 +95,9 @@ do
 done
 
 echo ""
-echo ""
 logging "Demo environment is ready!"
 echo ""
 
-# Open browser with C3 and HTTP Server
+# Open browser with C3 and Chatbot Web application
 python3 -m webbrowser -t "http://$HOST:9021"
 python3 -m webbrowser -t "http://$HOST:8888/login"

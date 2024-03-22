@@ -32,31 +32,33 @@ function send_message(initial, message, wait_prompt) {
         chat_history = '<img src="/static/images/customer.png" class="p-1" height="30px"></img><span class="badge bg-warning text-dark">' + customer_name + '</span><span class="message text-light">' + current_time() + '</span><div class="customer message mt-1 mb-1">' + customer_message + '</div>';
     }
     
-    var spanID = "_id-" + parseInt((new Date()).getTime()) + parseInt(Math.random() * 10000);
-    chat_history += '<img src="/static/images/waiter.png" class="p-1" height="30px"></img><span class="badge bg-primary text-light">' + waiter_name + '</span><span id="time' + spanID + '" class="message text-light">...</span><div id="' + spanID + '" class="chatbot message mt-1 mb-1"><span class="typing blink">' + wait_prompt + '</span></div>';
+    if (customer_message || initial > 0) {
+        var spanID = "_id-" + parseInt((new Date()).getTime()) + parseInt(Math.random() * 10000);
+        chat_history += '<img src="/static/images/waiter.png" class="p-1" height="30px"></img><span class="badge bg-primary text-light">' + waiter_name + '</span><span id="time' + spanID + '" class="message text-light">...</span><div id="' + spanID + '" class="chatbot message mt-1 mb-1"><span class="typing blink">' + wait_prompt + '</span></div>';
 
-    $("#chat-history").append(chat_history);
+        $("#chat-history").append(chat_history);
 
-    var textarea = document.getElementById("chat-history");
-    textarea.scrollTop = textarea.scrollHeight;
+        var textarea = document.getElementById("chat-history");
+        textarea.scrollTop = textarea.scrollHeight;
 
-    // POST question to B/E
-    $.ajax({
-        type: "POST",
-        url: "/send-message",
-        contentType: "application/json; charset=utf-8",
-        dataType: "json",
-        data: JSON.stringify({
-            initial_message: initial,
-            customer_message: customer_message,
-            span_id: spanID,
-        }),
-        success: function(data) {
-            $("#customer_message").focus();
-            $("#" + data.span_id).html(data.waiter);
-            $("#time" + data.span_id).html(current_time());
-        }
-    });
+        // POST question to B/E
+        $.ajax({
+            type: "POST",
+            url: "/send-message",
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+            data: JSON.stringify({
+                initial_message: initial,
+                customer_message: customer_message,
+                span_id: spanID,
+            }),
+            success: function(data) {
+                $("#customer_message").focus();
+                $("#" + data.span_id).html(data.waiter);
+                $("#time" + data.span_id).html(current_time());
+            }
+        });
+    }
 }
 
 function main_menu() {

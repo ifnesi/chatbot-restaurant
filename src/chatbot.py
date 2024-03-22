@@ -1,9 +1,9 @@
 import os
 import sys
 import json
+import regex
 import logging
 import argparse
-import datetime
 
 from dotenv import load_dotenv
 from threading import Thread
@@ -12,8 +12,10 @@ from langchain.schema import SystemMessage, HumanMessage
 
 from utils import (
     KafkaClient,
-    initial_prompt,
     sys_exc,
+    adjust_html,
+    calculate_age,
+    initial_prompt,
 )
 
 
@@ -159,7 +161,6 @@ if __name__ == "__main__":
                 try:
 
                     if value["counter"] == 0:  # Initial message
-                        logging.info(f"{username} has logged in!")
 
                         # LLM Session
                         chatSessions[key] = ChatOpenAI(
@@ -172,12 +173,26 @@ if __name__ == "__main__":
                         customer_allergies = (
                             rag.customer_profile[username]["allergies"] or "Nothing"
                         )
+                        
+                        try:
+                            customer_age = calculate_age(customer_dob)
+                            dob_string = f"is {customer_age} years old"
+                        except Exception:
+                            logging.error(sys_exc(sys.exc_info()))
+                            dob_string = f"born in {customer_dob}"
+                        query = f"We have a new customer (name is {customer_name}, {dob_string}, allergic to {customer_allergies}). Greet they with a welcoming message"
+
+                        context = content=initial_prompt(rag.rag, waiter_name)
+
                         chatMessages[key] = [
-                            SystemMessage(content=initial_prompt(rag.rag, waiter_name)),
+                            SystemMessage(context),
                             HumanMessage(
-                                content=f"""We have a new customer, please greet they with a friendly message\nCustomer name is {customer_name}, customer was born in {customer_dob} and is allergic to {customer_allergies}"""
+                                content=query
                             ),
                         ]
+                        logging.info(f"{username} has logged in!")
+                        logging.info(f"Context: {context}")
+                        logging.info(f"Query: {query}")
 
                     else:  # customer message
                         customer_message = value["message"]
@@ -191,7 +206,7 @@ if __name__ == "__main__":
 
                     response = chatSessions[key].invoke(chatMessages[key])
                     chatMessages[key].append(response)
-                    response = response.content
+                    response = adjust_html(response.content, "table", "table table-striped table-hover table-responsive table-sm")
 
                 except Exception:
                     logging.error(sys_exc(sys.exc_info()))

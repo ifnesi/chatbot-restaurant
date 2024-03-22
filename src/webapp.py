@@ -175,7 +175,8 @@ def do_login():
                     "login.html",
                     restaurant_name=RESTAURANT_NAME,
                     title="Login",
-                    error_message="Invalid password (as this is a demo, the password is the username &#128521;)",
+                    username=username,
+                    error_message="Invalid password! As this is a demo, the password is the username &#128521;",
                 ),
                 401,
             )
@@ -186,6 +187,7 @@ def do_login():
                 "login.html",
                 restaurant_name=RESTAURANT_NAME,
                 title="Login",
+                username=username,
                 error_message="Invalid Username",
             ),
             401,
@@ -324,8 +326,8 @@ if __name__ == "__main__":
         "--host",
         dest="host",
         type=str,
-        help="Hostname to listen on (default: 127.0.0.1)",
-        default="127.0.0.1",
+        help="Hostname to listen on (default: 0.0.0.0)",
+        default="0.0.0.0",
     )
     parser.add_argument(
         "--port",

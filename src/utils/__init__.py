@@ -6,7 +6,10 @@ import signal
 import hashlib
 import logging
 
+from bs4 import BeautifulSoup
+from datetime import date, datetime
 from configparser import ConfigParser
+from dateutil.relativedelta import relativedelta
 
 from confluent_kafka import Producer, Consumer, KafkaException
 from confluent_kafka.admin import NewTopic
@@ -81,7 +84,7 @@ class KafkaClient:
             self._consumer_config_latest = {
                 "group.id": f"{client_id}-consumer-latest",
                 "client.id": f"{client_id}-consumer-latest-01",
-                "auto.offset.reset": "earliest",
+                "auto.offset.reset": "latest",
                 "enable.auto.commit": "true",
             }
             self._consumer_config_latest.update(dict(self._config["kafka"]))
@@ -115,6 +118,7 @@ class KafkaClient:
                 f"Closing consumer {self._consumer_config_latest['client.id']} ({self._consumer_config_latest['group.id']})..."
             )
             try:
+                self.consumer_latest.commit()
                 self.consumer_latest.close()
                 self.consumer_latest = None
             except Exception:
@@ -223,6 +227,13 @@ class KafkaClient:
                 logging.error(sys_exc(sys.exc_info()))
 
 
+def calculate_age(birth_date: str) -> int:
+    birth_date_parsed = datetime.strptime(birth_date, "%Y/%m/%d")
+    today = date.today()
+    age = relativedelta(today, birth_date_parsed)
+    return age.years
+
+
 class CustomerProfiles:
     """Load customer profile in memory"""
 
@@ -253,45 +264,14 @@ def initial_prompt(
     rag_data: dict,
     waiter_name: str,
 ) -> str:
-    initial_prompt = (
-        f"You are an AI Assistant for a restaurant. Your name is: {waiter_name}\n"
-    )
-    initial_prompt += f"Below the context required to answer all customers questions:\n"
-    initial_prompt += "1. Details about the restaurant you work for:\n"
-    for key, value in rag_data["restaurant"].items():
-        initial_prompt += f"- {key}: {value}\n"
-
-    initial_prompt += "2. Restaurant policies:\n"
-    for key, value in rag_data["policies"].items():
-        initial_prompt += f"- {key}: {value}\n"
-
-    initial_prompt += "3. Main menu:\n"
-    for key in sorted(rag_data["menu"].keys()):
-        initial_prompt += f"3.{key}:\n"
-        for item in rag_data["menu"][key].values():
-            initial_prompt += f"- {item['name']} ({item['description']}): "
-            details = list()
-            for k, v in item.items():
-                if k not in ["name", "description"]:
-                    details.append(f"{k}: {v}")
-            initial_prompt += f"{', '.join(details)}\n"
-
-    initial_prompt += "4. Kids menu:\n"
-    for key in sorted(rag_data["kidsmenu"].keys()):
-        initial_prompt += f"4.{key}:\n"
-        for item in rag_data["kidsmenu"][key].values():
-            initial_prompt += f"- {item['name']} ({item['description']}): "
-            details = list()
-            for k, v in item.items():
-                if k not in ["name", "description"]:
-                    details.append(f"{k}: {v}")
-            initial_prompt += f"{', '.join(details)}\n"
-
-    initial_prompt += "5. As an AI Assistant you MUST comply with all policies below:\n"
-    for key, value in rag_data["ai_rules"].items():
-        initial_prompt += f"- {key}: {value}\n"
-
-    return initial_prompt
+    result = f"You are an AI Assistant for a restaurant. Your name is: {waiter_name}.\n"
+    result += f"Here is the context required to answer all customers questions:\n"
+    result += f"1. Details about the restaurant you work for:\n{json.dumps(rag_data['restaurant'])}\n"
+    result += f"2. Restaurant policies:\n{json.dumps(rag_data['policies'])}\n"
+    result += f"3. As an AI Assistant you MUST comply with these rules:\n{json.dumps(rag_data['ai_rules'])}\n"
+    result += f"4. Main menu:\n{json.dumps(rag_data['menu'])}\n"
+    result += f"5. Kids menu:\n{json.dumps(rag_data['kidsmenu'])}"
+    return result
 
 
 def hash_password(
@@ -321,3 +301,17 @@ def assess_password(
             100000,
         ),
     )
+
+
+def adjust_html(
+    html: str,
+    element: str,
+    classes: str,
+) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+    for item in soup.find_all(element):
+        item["class"] = classes
+    for e in ["h1", "h2", "h3", "h4", "h5"]:
+        for header in soup.find_all(e):
+            header.name = "h6"
+    return str(soup)

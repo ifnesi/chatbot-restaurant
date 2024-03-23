@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 from configparser import ConfigParser
 
 from utils import (
+    TOPIC_CUSTOMER_ACTIONS,
+    TOPIC_CHATBOT_RESPONSES,
     KafkaClient,
     SerializationContext,
     MessageField,
@@ -32,10 +34,36 @@ def main(args):
     config_data.read(args.config_data)
     config_data = dict(config_data)
 
+    # Create customer actions topic
     try:
+        kafka.create_topic(
+            TOPIC_CUSTOMER_ACTIONS,
+            cleanup_policy="delete",
+        )
+    except Exception:
+        logging.error(sys_exc(sys.exc_info()))
+        sys.exit(-1)
+
+    # Create chatbot responses topic
+    try:
+        kafka.create_topic(
+            TOPIC_CHATBOT_RESPONSES,
+            cleanup_policy="delete",
+        )
+    except Exception:
+        logging.error(sys_exc(sys.exc_info()))
+        sys.exit(-1)
+
+    try:
+        # Load RAG data into Kafka topics
         for rag, param in config_data.items():
 
             if rag in ["ai_rules", "policies", "restaurant"]:
+                # Avro serialiser
+                with open(param["schema"], "r") as f:
+                    schema_str = f.read()
+                avro_serializer = kafka.avro_serialiser(schema_str)
+
                 topic = param["topic"]
                 # Create new topic if required
                 try:
@@ -43,16 +71,27 @@ def main(args):
                 except Exception:
                     logging.error(sys_exc(sys.exc_info()))
                 else:
+
                     # Populate topic
                     with open(param["filename"], "r") as f:
                         data_to_load = json.loads(f.read())
+
                     for key, value in data_to_load.items():
                         try:
+                            message = {
+                                "description": value,
+                            }
                             kafka.producer.poll(0.0)
                             kafka.producer.produce(
                                 topic=topic,
                                 key=kafka.string_serializer(key),
-                                value=kafka.string_serializer(value),
+                                value=avro_serializer(
+                                    message,
+                                    SerializationContext(
+                                        topic,
+                                        MessageField.VALUE,
+                                    ),
+                                ),
                                 on_delivery=kafka.delivery_report,
                             )
                         except Exception:
@@ -70,14 +109,16 @@ def main(args):
 
                 for header, items in data_to_load.items():
                     topic = f"{topic_prefix}{header}"
+
                     # Create new topic if required
                     try:
                         kafka.create_topic(topic)
                     except Exception:
                         logging.error(sys_exc(sys.exc_info()))
                     else:
+
+                        # Populate topic
                         for key, value in items.items():
-                            # Populate topic
                             try:
                                 kafka.producer.poll(0.0)
                                 kafka.producer.produce(
@@ -110,14 +151,16 @@ def main(args):
                 except Exception:
                     logging.error(sys_exc(sys.exc_info()))
                 else:
+
+                    # Populate topic
                     with open(param["filename"], "r") as f:
                         data_to_load = json.loads(f.read())
+
                     for username, value in data_to_load.items():
-                        # Populate topic
                         try:
                             value["hashed_password"] = hash_password(
                                 password_salt,
-                                value.get("password", "1234"),
+                                value["password"],
                             )
                             value.pop("password", None)
                             kafka.producer.poll(0.0)
@@ -138,9 +181,13 @@ def main(args):
 
     except KeyboardInterrupt:
         pass
+
     finally:
         logging.info("Flushing records...")
-        kafka.producer.flush()
+        try:
+            kafka.producer.flush()
+        except Exception:
+            logging.error(sys_exc(sys.exc_info()))
 
 
 if __name__ == "__main__":
@@ -170,8 +217,8 @@ if __name__ == "__main__":
         "--config-data",
         dest="config_data",
         type=str,
-        help="Enter config filename for the data to be produced (default: config/default_loader.ini)",
-        default=os.path.join("config", "default_loader.ini"),
+        help="Enter config filename for the data to be produced (default: config/default_loader.dat)",
+        default=os.path.join("config", "default_loader.dat"),
     )
     parser.add_argument(
         "--env-vars",

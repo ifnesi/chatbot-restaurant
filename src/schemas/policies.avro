@@ -1,0 +1,12 @@
+{
+    "name": "policies",
+    "namespace": "streambite.example.com",
+    "type": "record",
+    "doc": "Restaurant Policies (title is the message key)",
+    "fields": [
+        {
+            "name": "description",
+            "type": "string"
+        }
+    ]
+}

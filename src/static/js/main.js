@@ -61,12 +61,12 @@ function send_message(initial, message, wait_prompt) {
     }
 }
 
-function main_menu() {
-    send_message(0, "Show the full main menu in HTML format, make sure to highlight the allergies according to the customer profile and alcoholic restrictions based on their age", "Getting you the main menu...");
+function main_menu(section) {
+    send_message(0, "Show the " + section + " on the main menu in HTML format, make sure to highlight the allergies according to the customer profile and alcoholic restrictions based on their age", "Getting you the " + section.replaceAll("_", " ") + " on the main menu...");
 }
 
-function kids_menu() {
-    send_message(0, "Show the full kids menu in HTML format, make sure to highlight the allergies according to the customer profile and alcoholic restrictions based on their age", "Getting you the kids menu...");
+function kids_menu(section) {
+    send_message(0, "Show the " + section + " on kids menu in HTML format, make sure to highlight the allergies according to the customer profile", "Getting you the " + section.replaceAll("_", " ") + " on the kids menu...");
 }
 
 function my_bill() {

@@ -1,0 +1,21 @@
+{
+    "name": "chatbot_response",
+    "namespace": "streambite.example.com",
+    "type": "record",
+    "doc": "Response by the LLM Model (session_id is the message key)",
+    "fields": [
+        {
+            "name": "response",
+            "type": "string"
+        },
+        {
+            "name": "mid",
+            "type": [
+                "null",
+                "long"
+            ],
+            "default": null,
+            "doc": "Message unique ID (UTC Epoch) - Same as per customer message"
+        }
+    ]
+}

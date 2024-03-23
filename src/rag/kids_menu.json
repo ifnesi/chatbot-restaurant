@@ -1,5 +1,5 @@
 {
-    "1.starters": {
+    "starters": {
         "mini-cheese-quesadillas": {
             "name": "Mini Cheese Quesadillas",
             "description": "Cheesy and delicious mini quesadillas, served with a side of salsa",
@@ -21,7 +21,7 @@
             "price": 4.5
         }
     },
-    "2.mains": {
+    "mains": {
         "mac-n-cheese": {
             "name": "Mac & Cheese",
             "description": "Creamy macaroni and cheese, a classic favorite",
@@ -43,7 +43,7 @@
             "price": 6
         }
     },
-    "3.drinks": {
+    "drinks": {
         "fruit-punch": {
             "name": "Fruit Punch",
             "description": "Sweet and refreshing fruit punch made with real fruit juice",
@@ -65,7 +65,7 @@
             "price": 1.5
         }
     },
-    "4.desserts": {
+    "desserts": {
         "ice-cream-sundae": {
             "name": "Ice Cream Sundae",
             "description": "Vanilla ice cream topped with chocolate syrup, whipped cream, and a cherry",

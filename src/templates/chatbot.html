@@ -14,14 +14,32 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-               <li class="nav-item">
-                    <a class="nav-link active" aria-current="page" href="javascript:main_menu()">Main Menu</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active" aria-current="page" href="javascript:kids_menu()">Kids Menu</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active" aria-current="page" href="javascript:my_bill()">My Bill</a>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Main Menu
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                        <li><a class="dropdown-item" href="javascript:main_menu('starters')">Starters</a></li>
+                        <li><a class="dropdown-item" href="javascript:main_menu('mains')">Mains</a></li>
+                        <li><a class="dropdown-item" href="javascript:main_menu('alcoholic_drinks')">Alcoholic Drinks</a></li>
+                        <li><a class="dropdown-item" href="javascript:main_menu('non_alcoholic_drinks')">Non Alcoholic Drinks</a></li>
+                        <li><a class="dropdown-item" href="javascript:main_menu('hot_drinks')">Hot Drinks</a></li>
+                        <li><a class="dropdown-item" href="javascript:main_menu('desserts')">Desserts</a></li>
+                    </ul>
+               </li>
+               <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Kids Menu
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                    <li><a class="dropdown-item" href="javascript:kids_menu('starters')">Starters</a></li>
+                    <li><a class="dropdown-item" href="javascript:kids_menu('mains')">Mains</a></li>
+                    <li><a class="dropdown-item" href="javascript:kids_menu('drinks')">Drinks</a></li>
+                    <li><a class="dropdown-item" href="javascript:kids_menu('desserts')">Desserts</a></li>
+                </ul>
+           </li>
+            <li class="nav-item">
+                    <a class="nav-link active" aria-current="page" href="javascript:kids_menu()" title="Request Restaurant's Kids Menu">Kids Menu</a>
                 </li>
             </ul>
             <div class="collapse navbar-collapse" id="navbarSupportedContent">
@@ -29,6 +47,7 @@
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="javascript:void(0)" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">{{session.customer_name}}</a>
                         <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                            <li><a class="dropdown-item" href="javascript:my_bill()" title="View your current bill">My Bill</a></li>
                             <li><a class="dropdown-item" href="/logout">Logout</a></li>
                         </ul>
                     </li>

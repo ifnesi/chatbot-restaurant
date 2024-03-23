@@ -2,7 +2,7 @@
     "name": "customer_profile",
     "namespace": "streambite.example.com",
     "type": "record",
-    "doc": "username is part of the message key",
+    "doc": "username is the message key",
     "fields": [
         {
             "name": "hashed_password",

@@ -1,14 +1,17 @@
 [ai_rules]
 topic = chatbot-restaurant-rag-ai_rules
 filename = rag/ai_rules.json
+schema = schemas/ai_rules.avro
 
 [policies]
 topic = chatbot-restaurant-rag-policies
 filename = rag/policies.json
+schema = schemas/policies.avro
 
 [restaurant]
 topic = chatbot-restaurant-rag-restaurant
 filename = rag/restaurant.json
+schema = schemas/restaurant.avro
 
 [main_menu]
 topic_prefix = chatbot-restaurant-rag-menu_

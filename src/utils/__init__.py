@@ -24,6 +24,17 @@ from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroSerializer, AvroDeserializer
 
 
+####################
+# Global Variables #
+####################
+TOPIC_RAG = "^chatbot-restaurant-rag-.*"
+TOPIC_CUSTOMER_ACTIONS = "chatbot-restaurant-customer_actions"
+TOPIC_CUSTOMER_PROFILES = "chatbot-restaurant-customer_profiles"
+TOPIC_CHATBOT_RESPONSES = "chatbot-restaurant-chatbot_responses"
+
+###########
+# Classes #
+###########
 class KafkaClient:
     def __init__(
         self,
@@ -227,13 +238,6 @@ class KafkaClient:
                 logging.error(sys_exc(sys.exc_info()))
 
 
-def calculate_age(birth_date: str) -> int:
-    birth_date_parsed = datetime.strptime(birth_date, "%Y/%m/%d")
-    today = date.today()
-    age = relativedelta(today, birth_date_parsed)
-    return age.years
-
-
 class CustomerProfiles:
     """Load customer profile in memory"""
 
@@ -243,7 +247,7 @@ class CustomerProfiles:
 
     def consumer(self, kafka) -> None:
         while True:
-            for _, _, key, value in kafka.avro_string_consumer(
+            for topic, headers, key, value in kafka.avro_string_consumer(
                 kafka.consumer_earliest,
                 self.topics,
             ):
@@ -253,6 +257,16 @@ class CustomerProfiles:
                 else:
                     self.data[key] = value
                     logging.info(f"Loaded profile for {key}: {json.dumps(value)}")
+
+
+#############
+# Functions #
+#############
+def calculate_age(birth_date: str) -> int:
+    birth_date_parsed = datetime.strptime(birth_date, "%Y/%m/%d")
+    today = date.today()
+    age = relativedelta(today, birth_date_parsed)
+    return age.years
 
 
 def sys_exc(exc_info) -> str:
@@ -268,7 +282,7 @@ def initial_prompt(
     result += f"Here is the context required to answer all customers questions:\n"
     result += f"1. Details about the restaurant you work for:\n{json.dumps(rag_data['restaurant'])}\n"
     result += f"2. Restaurant policies:\n{json.dumps(rag_data['policies'])}\n"
-    result += f"3. As an AI Assistant you MUST comply with these rules:\n{json.dumps(rag_data['ai_rules'])}\n"
+    result += f"3. You MUST comply with these AI rules:\n{json.dumps(rag_data['ai_rules'])}\n"
     result += f"4. Main menu:\n{json.dumps(rag_data['menu'])}\n"
     result += f"5. Kids menu:\n{json.dumps(rag_data['kidsmenu'])}"
     return result

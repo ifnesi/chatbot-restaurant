@@ -1,5 +1,5 @@
 {
-    "1.starters": {
+    "starters": {
         "tomato-bruschetta": {
             "name": "Tomato Bruschetta",
             "description": "Grilled bread topped with fresh tomatoes, garlic, and basil",
@@ -31,7 +31,7 @@
             "price": 9
         }
     },
-    "2.mains": {
+    "mains": {
         "beef-burger": {
             "name": "Beef Burger",
             "description": "Grass-fed beef patty with lettuce, tomato, and cheese, served on a brioche bun",
@@ -73,7 +73,7 @@
             "price": 10
         }
     },
-    "3.alcoholic_drinks": {
+    "alcoholic_drinks": {
         "craft-beer": {
             "name": "Craft Beer",
             "description": "Locally brewed IPA with citrus and pine notes",
@@ -105,7 +105,7 @@
             "price": 7
         }
     },
-    "4.non_alcoholic_drinks": {
+    "non_alcoholic_drinks": {
         "lemonade": {
             "name": "Lemonade",
             "description": "Freshly squeezed lemonade, sweetened with a touch of honey",
@@ -157,7 +157,7 @@
             "price": 0
         }
     },
-    "5.hot_drinks": {
+    "hot_drinks": {
         "coffee": {
             "name": "Coffee",
             "description": "Freshly brewed coffee from single-origin beans",
@@ -189,7 +189,7 @@
             "price": 3
         }
     },
-    "6.desserts": {
+    "desserts": {
         "chocolate-lava-cake": {
             "name": "Chocolate Lava Cake",
             "description": "Warm, gooey chocolate cake with a molten chocolate center, served with vanilla ice cream",

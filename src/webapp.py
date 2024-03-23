@@ -22,6 +22,9 @@ from flask_login import (
 )
 
 from utils import (
+    TOPIC_CHATBOT_RESPONSES,
+    TOPIC_CUSTOMER_PROFILES,
+    TOPIC_CUSTOMER_ACTIONS,
     KafkaClient,
     SerializationContext,
     MessageField,
@@ -65,28 +68,22 @@ class ChatbotResponses:
 
     def consumer(self, kafka) -> None:
         while True:
-            for _, _, key, value in kafka.avro_string_consumer(
+            for topic, headers, key, value in kafka.avro_string_consumer(
                 kafka.consumer_latest,
                 self.topics,
             ):
-                logging.info(
-                    f"Message received for session_id-counter {key}: {value}"
-                )
-                self.data[key] = value
+                logging.info(f"Message received for session_id {key}: {value}")
+                response_key = f"{key}:{value['mid']}"
+                self.data[response_key] = value["response"]
+
 
 ####################
 # Global Variables #
 ####################
 kafka = None
 customer_action_serialiser = None
-
-TOPIC_CUSTOMER_PROFILES = "chatbot-restaurant-customer_profiles"
 customer_profiles = CustomerProfiles(topics=[TOPIC_CUSTOMER_PROFILES])
-
-TOPIC_CHATBOT_RESPONSES = "chatbot-restaurant-chatbot_responses"
 chatbot_responses = ChatbotResponses(topics=[TOPIC_CHATBOT_RESPONSES])
-
-TOPIC_CUSTOMER_ACTIONS = "chatbot-restaurant-customer_actions"
 
 # Restaurant name
 with open(os.path.join("rag", "restaurant.json"), "r") as f:
@@ -161,7 +158,6 @@ def do_login():
             session["restaurant_name"] = RESTAURANT_NAME
             session["customer_name"] = customer_profiles.data[username]["full_name"]
             session["username"] = username
-            session["counter"] = 0
             login_user(
                 User(session["session_id"]),
                 duration=datetime.timedelta(hours=1),
@@ -209,26 +205,24 @@ def send_message():
             "span_id": span_id,
         }
 
-        message = {
+        message = dict()
+        if initial_message:
+            mid = 0
+        else:
+            mid = int(time.time() * 1000)
+            message["message"] = customer_message
+
+        message.update({
             "username": session["username"],
             "waiter_name": session["waiter_name"],
-            "counter": session["counter"],
-        }
-
-        if not initial_message and customer_message:
-            message.update(
-                {
-                    "message": customer_message,
-                }
-            )
-
-        session["counter"] += 1
+            "mid": mid,
+        })
 
         # Produce message to kafka
         kafka.producer.poll(0.0)
         kafka.producer.produce(
             topic=TOPIC_CUSTOMER_ACTIONS,
-            key=kafka.string_serializer(session["session_id"]),
+            key=kafka.string_serializer(session['session_id']),
             value=customer_action_serialiser(
                 message,
                 SerializationContext(
@@ -241,10 +235,11 @@ def send_message():
         logging.info("Flushing records...")
         kafka.producer.flush()
 
-        # Wait for response (sync for now)
-        response_key = f"{session['session_id']}-{session['counter']-1}"
+        # Wait for response from LLM model (sync for now)
+        # The message key on both the submit prompt topic and get LLM model response topic is the same (<session_id>:<counter>)
+        response_key = f"{session['session_id']}:{mid}"
         while response_key not in chatbot_responses.data.keys():
-            time.sleep(0.15)
+            time.sleep(3)
 
         result["waiter"] = chatbot_responses.data[response_key]
         chatbot_responses.data.pop(response_key)
@@ -262,16 +257,15 @@ def send_message():
 @login_required
 def logout():
     try:
-        # Produce logout message to kafka
+        # Produce logout message to kafka (message and mid are None)
         message = {
             "username": session["username"],
             "waiter_name": session["waiter_name"],
-            "counter": -1,
         }
         kafka.producer.poll(0.0)
         kafka.producer.produce(
             topic=TOPIC_CUSTOMER_ACTIONS,
-            key=kafka.string_serializer(session["session_id"]),
+            key=kafka.string_serializer(session['session_id']),
             value=customer_action_serialiser(
                 message,
                 SerializationContext(
@@ -288,6 +282,15 @@ def logout():
         logging.error(sys_exc(sys.exc_info()))
 
     finally:
+        # cleanup any left over session_id message on the chatbot_responses cache
+        session_id_left_overs = [
+            id
+            for id in chatbot_responses.data.keys()
+            if id.startswith(session["session_id"])
+        ]
+        for id in session_id_left_overs:
+            chatbot_responses.data.pop(id, None)
+
         logout_user()
         session.clear()
         return redirect(url_for("login"))
@@ -368,26 +371,6 @@ if __name__ == "__main__":
     with open(os.path.join("schemas", "customer_message.avro"), "r") as f:
         schema_str = f.read()
     customer_action_serialiser = kafka.avro_serialiser(schema_str)
-
-    # Create customer actions topic
-    try:
-        kafka.create_topic(
-            TOPIC_CUSTOMER_ACTIONS,
-            cleanup_policy="delete",
-        )
-    except Exception:
-        logging.error(sys_exc(sys.exc_info()))
-        sys.exit(-1)
-
-    # Create chatbot responses topic
-    try:
-        kafka.create_topic(
-            TOPIC_CHATBOT_RESPONSES,
-            cleanup_policy="delete",
-        )
-    except Exception:
-        logging.error(sys_exc(sys.exc_info()))
-        sys.exit(-1)
 
     # Start Customer Profiles Consumer thread
     Thread(

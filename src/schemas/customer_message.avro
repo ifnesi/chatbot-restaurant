@@ -2,7 +2,7 @@
     "name": "customer_message",
     "namespace": "streambite.example.com",
     "type": "record",
-    "doc": "Message submitted by the customers via the Chatbot (session_id is the key)",
+    "doc": "Message submitted by the customers via the Chatbot (session_id is the message key)",
     "fields": [
         {
             "name": "username",
@@ -21,9 +21,13 @@
             "default": null
         },
         {
-            "name": "counter",
-            "type": "int",
-            "doc": "Message counter, -1 means logout"
+            "name": "mid",
+            "type": [
+                "null",
+                "long"
+            ],
+            "default": null,
+            "doc": "Message unique ID (UTC Epoch)"
         }
     ]
 }

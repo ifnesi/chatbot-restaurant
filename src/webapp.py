@@ -238,21 +238,31 @@ def send_message():
         kafka.producer.flush()
 
         # Wait for response from LLM model (sync for now)
-        # The message key on both the submit prompt topic and get LLM model response topic is the same (<session_id>:<counter>)
+        # The message key on both the submit prompt topic and get LLM model response topic is the same (<session_id>:<mid>)
+        timeout = False
+        session_start = time.time()
         response_key = f"{session['session_id']}:{mid}"
         while response_key not in chatbot_responses.data.keys():
-            time.sleep(3)
+            time.sleep(0.1)
+            if time.time() - session_start > 45:
+                result[
+                    "waiter"
+                ] = "<span class='error_message'>Oops! I got lost in thought. Nudge me again?</span>"
+                timeout = True
+                break
 
-        result["waiter"] = chatbot_responses.data[response_key]
-        chatbot_responses.data.pop(response_key)
+        if not timeout:
+            result["waiter"] = chatbot_responses.data[response_key]
+            chatbot_responses.data.pop(response_key, None)
 
     except Exception:
         logging.error(sys_exc(sys.exc_info()))
         result[
             "waiter"
-        ] = "<span class='error_message'>Sorry, something went wrong on the front-end! Please try again</span>"
+        ] = "<span class='error_message'>Yikes! My pixels got tangled. Can you try that once more?</span>"
 
-    return jsonify(result)
+    finally:
+        return jsonify(result)
 
 
 @app.route("/logout", methods=["GET"])

@@ -278,12 +278,18 @@ def initial_prompt(
     rag_data: dict,
     waiter_name: str,
 ) -> str:
-    def get_menu(rag_data: dict, sections: list,) -> str:
+    def get_menu(
+        rag_data: dict,
+        sections: list,
+        ord: int,
+    ) -> str:
         result = ""
         for n, section in enumerate(sections):
-            result += f"- {n+1} {section}:\n"
+            result += f"- {ord}.{n+1} {section}:\n"
             for m, data in enumerate(rag_data[section].values()):
-                result += f"  - {n+1}.{m+1} {data['name']} ({data['description']}): "
+                result += (
+                    f"  - {ord}.{n+1}.{m+1} {data['name']} ({data['description']}): "
+                )
                 items = list()
                 for key, value in data.items():
                     if key not in ["name", "description"]:
@@ -294,18 +300,31 @@ def initial_prompt(
     result = f"You are an AI Assistant for a restaurant. Your name is: {waiter_name}.\n"
     result += "Here is the context required to answer all customers questions:\n"
     result += "1. Details about the restaurant you work for:\n"
-    for key, value in rag_data['restaurant'].items():
+    for key, value in rag_data["restaurant"].items():
         result += f"- {key}: {value}\n"
     result += "2. Restaurant policies:\n"
-    for value in rag_data['policies'].items():
+    for key, value in rag_data["policies"].items():
         result += f"- {key}: {value}\n"
     result += "3. You MUST comply with these AI rules:\n"
-    for value in rag_data['ai_rules'].items():
+    for key, value in rag_data["ai_rules"].items():
         result += f"- {key}: {value}\n"
     result += "4. Main menu:\n"
-    result += get_menu(rag_data["menu"], ["starters", "mains", "alcoholic_drinks", "non_alcoholic_drinks", "hot_drinks", "desserts"])
+    result += get_menu(
+        rag_data["menu"],
+        [
+            "starters",
+            "mains",
+            "alcoholic_drinks",
+            "non_alcoholic_drinks",
+            "hot_drinks",
+            "desserts",
+        ],
+        4,
+    )
     result += f"5. Kids menu:\n"
-    result += get_menu(rag_data["kidsmenu"], ["starters", "mains", "drinks", "desserts"])
+    result += get_menu(
+        rag_data["kidsmenu"], ["starters", "mains", "drinks", "desserts"], 5
+    )
     return result
 
 

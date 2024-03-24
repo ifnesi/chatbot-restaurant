@@ -54,10 +54,10 @@ if [ ! -f $ENV_VAR_FILE ]; then
     echo ""
     echo "Generate the API Key(s) required and have them saved into the file '$ENV_VAR_FILE':"
     echo "cat > $ENV_VAR_FILE <<EOF"
-    echo "export OPENAI_API_KEY=\"<OpenAI_Key_here>\"       # https://platform.openai.com/docs/quickstart/account-setup?context=python"
     echo "export PASSWORD_SALT=\"<Any_string_here>\""
-    echo "export BASE_MODEL=\"gpt-3.5-turbo-16k\""
-    echo "export MODEL_TEMPERATURE=\"0.5\""
+    echo "export GROQ_API_KEY=\"<YOUR_GROQ_API_KEY>\"  #https://console.groq.com"
+    echo "export BASE_MODEL=\"mixtral-8x7b-32768\""
+    echo "export MODEL_TEMPERATURE=\"0.3\""
     echo "EOF"
     echo ""
     exit -1

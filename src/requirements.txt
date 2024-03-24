@@ -3,8 +3,9 @@ flask==3.0.2
 flask-login==0.6.3
 fastavro==1.9.4
 langchain==0.1.12
-langchain-openai==0.0.8
 requests==2.31.0
 confluent-kafka==2.3.0
 python-dotenv==1.0.1
 beautifulsoup4==4.12.3
+langchain-groq==0.0.1
+tiktoken==0.6.0

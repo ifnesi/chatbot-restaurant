@@ -1,7 +1,12 @@
 ![image](docs/logo.png)
 
 # chatbot-restaurant
-Chatbot for a restaurant using [OpenAI](https://openai.com/) and [Confluent](https://www.confluent.io/lp/confluent-kafka).
+Chatbot for a restaurant using [GroqCloud](https://console.groq.com) and [Confluent](https://www.confluent.io/lp/confluent-kafka).
+
+As GroqCloud is free to use the current LLM model used (`mixtral-8x7b-32768`) has the following limitations:
+- Requests per minute: 30
+- Requests per day: 14,400
+- Tokens per minute: 18,000
 
 ## Demo Diagram
 ![image](docs/demo_diagram.png)
@@ -16,17 +21,16 @@ Chatbot for a restaurant using [OpenAI](https://openai.com/) and [Confluent](htt
 ## The Demo
 This demo runs all on Docker and it was only tested on a MAC M1. In case needed change the platform option to your needs (see variable `PLATFORM` on the file `.env`).
 
-To be able to interact with OpenAI, you will need the following API key:
-* [OpenAI](https://openai.com/) LLM model
-  - Follow steps from [here](https://platform.openai.com/docs/quickstart/account-setup) to create an Account and then an API Key only
+To be able to interact with Groq LLM model, you will need the following API key:
+* [GroqCloud](https://console.groq.com) LLM model
 
 Having the API key at hand, create a file named `.env_demo` file by executing the command:
 ```bash
 cat > .env_demo <<EOF
-export OPENAI_API_KEY=<OpenAI_Key_here>
-export PASSWORD_SALT="Stre4mb1te$-G3n-AI-Dem0"
-export BASE_MODEL="gpt-3.5-turbo-16k"
-export MODEL_TEMPERATURE="0.5"
+export PASSWORD_SALT="<Any_string_here>"
+export GROQ_API_KEY="<YOUR_GROQ_API_KEY>"
+export BASE_MODEL="mixtral-8x7b-32768"
+export MODEL_TEMPERATURE="0.3"
 EOF
 ```
 

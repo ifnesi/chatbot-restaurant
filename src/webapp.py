@@ -244,7 +244,7 @@ def send_message():
         response_key = f"{session['session_id']}:{mid}"
         while response_key not in chatbot_responses.data.keys():
             time.sleep(0.1)
-            if time.time() - session_start > 45:
+            if time.time() - session_start > 120:
                 result[
                     "waiter"
                 ] = "<span class='error_message'>Oops! I got lost in thought. Nudge me again?</span>"

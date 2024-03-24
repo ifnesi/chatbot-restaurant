@@ -147,7 +147,7 @@ def main(args):
                         # LLM Session
                         chatSessions[session_id] = ChatOpenAI(
                             model=os.environ.get("BASE_MODEL"),
-                            temperature=0.6,
+                            temperature=float(os.environ.get("MODEL_TEMPERATURE")),
                         )
 
                         waiter_name = value["waiter_name"]
@@ -157,15 +157,15 @@ def main(args):
                             rag.customer_profile[username]["allergies"] or "nothing"
                         )
 
+                        context = initial_prompt(rag.rag, waiter_name)
                         try:
                             customer_age = calculate_age(customer_dob)
                             dob_string = f"is {customer_age} years old"
                         except Exception:
                             logging.error(sys_exc(sys.exc_info()))
                             dob_string = f"was born in {customer_dob}"
-
-                        query = f"We have a new customer (name is {customer_name}, {dob_string}, allergic to {customer_allergies}). Greet they with a welcoming message"
-                        context = initial_prompt(rag.rag, waiter_name)
+                        finally:
+                            query = f"We have a new customer (name is {customer_name}, {dob_string}, allergic to {customer_allergies}). Greet they with a welcoming message"
 
                         chatMessages[session_id] = [
                             SystemMessage(context),
@@ -182,11 +182,7 @@ def main(args):
                             f"Message received from {username}: {customer_message}"
                         )
 
-                        chatMessages[session_id].append(
-                            HumanMessage(
-                                f"Address this customer message making sure to comply with all restaurant policies and AI rules:\n{customer_message}"
-                            )
-                        )
+                        chatMessages[session_id].append(HumanMessage(customer_message))
 
                     # Submit promt to LLM model
                     response = chatSessions[session_id].invoke(chatMessages[session_id])

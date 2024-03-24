@@ -26,6 +26,7 @@ cat > .env_demo <<EOF
 export OPENAI_API_KEY=<OpenAI_Key_here>
 export PASSWORD_SALT="Stre4mb1te$-G3n-AI-Dem0"
 export BASE_MODEL="gpt-3.5-turbo-16k"
+export MODEL_TEMPERATURE="0.3"
 EOF
 ```
 

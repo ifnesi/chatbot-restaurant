@@ -6,7 +6,7 @@ import argparse
 
 from dotenv import load_dotenv
 from threading import Thread
-from langchain_openai import ChatOpenAI
+from langchain_groq import ChatGroq
 from langchain.schema import SystemMessage, HumanMessage
 
 from utils import (
@@ -145,9 +145,11 @@ def main(args):
                     if mid == 0:  # Initial message (after login)
 
                         # LLM Session
-                        chatSessions[session_id] = ChatOpenAI(
-                            model=os.environ.get("BASE_MODEL"),
+                        chatSessions[session_id] = ChatGroq(
+                            groq_api_key=os.environ.get("GROQ_API_KEY"),
+                            model_name=os.environ.get("BASE_MODEL"),
                             temperature=float(os.environ.get("MODEL_TEMPERATURE")),
+                            max_tokens=32768,
                         )
 
                         waiter_name = value["waiter_name"]
@@ -179,7 +181,7 @@ def main(args):
                     else:  # new customer message
                         customer_message = value["message"] or ""
                         logging.info(
-                            f"Message received from {username}: {customer_message}"
+                            f"Briefly reply to the customer message below in HTML format:\n{customer_message}"
                         )
 
                         chatMessages[session_id].append(HumanMessage(customer_message))

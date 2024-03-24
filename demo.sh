@@ -57,7 +57,7 @@ if [ ! -f $ENV_VAR_FILE ]; then
     echo "export OPENAI_API_KEY=\"<OpenAI_Key_here>\"       # https://platform.openai.com/docs/quickstart/account-setup?context=python"
     echo "export PASSWORD_SALT=\"<Any_string_here>\""
     echo "export BASE_MODEL=\"gpt-3.5-turbo-16k\""
-    echo "export MODEL_TEMPERATURE=\"0.3\""
+    echo "export MODEL_TEMPERATURE=\"0.5\""
     echo "EOF"
     echo ""
     exit -1

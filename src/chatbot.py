@@ -195,7 +195,7 @@ def main(args):
 
                 except Exception:
                     logging.error(sys_exc(sys.exc_info()))
-                    response = "<span class='error_message'>Sorry, something went wrong on the back-end! Please try again</span>"
+                    response = "<span class='error_message'>Uh-oh! The back-end gears got jammed. Please try again in a bit</span>"
 
                 finally:  # publish message in the response topic
                     try:

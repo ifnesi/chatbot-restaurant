@@ -212,17 +212,19 @@ def send_message():
             mid = int(time.time() * 1000)
             message["message"] = customer_message
 
-        message.update({
-            "username": session["username"],
-            "waiter_name": session["waiter_name"],
-            "mid": mid,
-        })
+        message.update(
+            {
+                "username": session["username"],
+                "waiter_name": session["waiter_name"],
+                "mid": mid,
+            }
+        )
 
         # Produce message to kafka
         kafka.producer.poll(0.0)
         kafka.producer.produce(
             topic=TOPIC_CUSTOMER_ACTIONS,
-            key=kafka.string_serializer(session['session_id']),
+            key=kafka.string_serializer(session["session_id"]),
             value=customer_action_serialiser(
                 message,
                 SerializationContext(
@@ -265,7 +267,7 @@ def logout():
         kafka.producer.poll(0.0)
         kafka.producer.produce(
             topic=TOPIC_CUSTOMER_ACTIONS,
-            key=kafka.string_serializer(session['session_id']),
+            key=kafka.string_serializer(session["session_id"]),
             value=customer_action_serialiser(
                 message,
                 SerializationContext(

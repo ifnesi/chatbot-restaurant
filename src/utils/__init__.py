@@ -282,7 +282,9 @@ def initial_prompt(
     result += f"Here is the context required to answer all customers questions:\n"
     result += f"1. Details about the restaurant you work for:\n{json.dumps(rag_data['restaurant'])}\n"
     result += f"2. Restaurant policies:\n{json.dumps(rag_data['policies'])}\n"
-    result += f"3. You MUST comply with these AI rules:\n{json.dumps(rag_data['ai_rules'])}\n"
+    result += (
+        f"3. You MUST comply with these AI rules:\n{json.dumps(rag_data['ai_rules'])}\n"
+    )
     result += f"4. Main menu:\n{json.dumps(rag_data['menu'])}\n"
     result += f"5. Kids menu:\n{json.dumps(rag_data['kidsmenu'])}"
     return result

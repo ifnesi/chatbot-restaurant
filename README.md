@@ -1,7 +1,7 @@
 ![image](docs/logo.png)
 
 # chatbot-restaurant
-Chatbot for a restaurant using [OpenAI](https://openai.com/), [GroqCloud](https://console.groq.com) and [Confluent](https://www.confluent.io/lp/confluent-kafka).
+Chatbot for a restaurant using [Confluent](https://www.confluent.io/lp/confluent-kafka), [OpenAI](https://openai.com/), [GroqCloud](https://console.groq.com) and [Qdrant](https://qdrant.tech/).
 
 As GroqCloud is free to use the current LLM model used (`mixtral-8x7b-32768`) has the following limitations:
 - Requests per minute: 30
@@ -9,6 +9,8 @@ As GroqCloud is free to use the current LLM model used (`mixtral-8x7b-32768`) ha
 - Tokens per minute: 18,000
 
 If you prefer, you can opt to use OpenAI but it is a paid service.
+
+Qdrant, although has the [SaaS Cloud](https://qdrant.tech/documentation/cloud/) option this demo uses the local [in memory version](https://github.com/qdrant/qdrant-client) of it.
 
 ## Demo Diagram
 ![image](docs/demo_diagram.png)

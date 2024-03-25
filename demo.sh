@@ -2,14 +2,15 @@
 
 ## Functions
 function usage() {
-  echo "usage: ./demo.sh [-h, --help] [-x, --start] [-p, --stop]"
+  echo "usage: ./demo.sh [-h, --help] [-x, --start] [-p, --stop] [-r, --restart]"
   echo ""
   echo "Demo: Chatbot for a Restaurant (Confluent - All rights reserved)"
   echo ""
   echo "Options:"
-  echo " -h, --help    Show this help message and exit"
-  echo " -x, --start   Start demo"
-  echo " -p, --stop    Stop demo"
+  echo " -h, --help     Show this help message and exit"
+  echo " -x, --start    Start demo"
+  echo " -p, --stop     Stop demo"
+  echo " -r, --restart  Restart microservices"
   echo ""
 }
 
@@ -42,6 +43,9 @@ elif [[ "$1" == "--help" || "$1" == "-h" ]]; then
   # Demo help
   usage
   exit 0
+elif [[ "$1" == "--restart" || "$1" == "-r" ]]; then
+  logging "Restarting microservices"
+  docker-compose restart chatbot
 elif [[ "$1" != "--start" && "$1" != "-x" ]]; then
   logging "Invalid argument '$1'" "ERROR"
   usage
@@ -77,6 +81,8 @@ if [ ! -f $ENV_VAR_FILE ]; then
     echo "GROQ_API_KEY=\"<Your_GroqCloud_API_Key_Here>\" # Required if LLM_ENGINE=groq (Get the API Key here: https://console.groq.com)"
     echo "BASE_MODEL=\"gpt-3.5-turbo-0125\"              # Options: gpt-3.5-turbo-0125 (if LLM_ENGINE=openai), mixtral-8x7b-32768 (if LLM_ENGINE=groq)"
     echo "MODEL_TEMPERATURE=0.3"
+    echo "VECTOR_DB_MIN_SCORE=0.2"
+    echo "VECTOR_DB_SEARCH_LIMIT=2"
     echo "EOF"
     echo ""
     exit -1

@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import hashlib
 import logging
 
 from dotenv import load_dotenv, find_dotenv
@@ -8,7 +9,11 @@ from threading import Thread
 from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
 from langchain.callbacks import get_openai_callback
-from langchain.schema import SystemMessage, HumanMessage, AIMessage
+from langchain.schema import SystemMessage, HumanMessage
+
+from qdrant_client import QdrantClient
+from qdrant_client.http import models
+from sentence_transformers import SentenceTransformer
 
 from utils import (
     TOPIC_RAG,
@@ -25,16 +30,33 @@ from utils import (
 )
 
 
+####################
+# Global Variables #
+####################
+chatSessions = dict()
+chatMessages = dict()
+chatVectorDB = dict()
+
+
 ###########
 # Classes #
 ###########
 class LoadRAG:
     """Load in memory RAG / Customer Profiles"""
 
-    def __init__(self, topics) -> None:
+    def __init__(
+        self,
+        topics,
+        vdb_client,
+        vdb_model,
+        vdb_collection,
+    ) -> None:
         self.rag = dict()
         self.customer_profile = dict()
         self.topics = topics
+        self.vdb_client = vdb_client
+        self.vdb_model = vdb_model
+        self.vdb_collection = vdb_collection
 
     def consumer(self, kafka) -> None:
         while True:
@@ -69,6 +91,28 @@ class LoadRAG:
                         else:
                             self.rag[prefix][suffix][key] = value
 
+                    # Load sentences into the Vector DB
+                    elif rag_name in ["vector_db"]:
+                        sentence = f"{key}: {value['description']}"
+                        embeddings = self.vdb_model.encode([sentence])
+
+                        # Upsert collection
+                        id = int(hashlib.md5(key.encode("utf-8")).hexdigest(), 16)
+                        logging.info(f"Upserting Vector DB collection {self.vdb_collection}: {id} | {sentence}")
+                        self.vdb_client.upsert(
+                            collection_name=self.vdb_collection,
+                            points=[
+                                models.PointStruct(
+                                    id=id,
+                                    vector=embeddings[0],
+                                    payload={
+                                        "title": key,
+                                        "description": value['description'],
+                                    },
+                                ),
+                            ],
+                        )
+
                     # Policies, Restaurant and AI Rules
                     else:
                         if rag_name not in self.rag.keys():
@@ -85,25 +129,55 @@ class LoadRAG:
                         logging.info(f"Loaded RAG {rag_name}: {json.dumps(value)}")
 
 
-####################
-# Global Variables #
-####################
-chatSessions = dict()
-chatMessages = dict()
-
-kafka = None
-customer_action_serialiser = None
-
-rag = LoadRAG(topics=[TOPIC_CUSTOMER_PROFILES, TOPIC_RAG])
-
-
 ########
 # Main #
 ########
-def main():
+if __name__ == "__main__":
+    FILE_APP = os.path.splitext(os.path.split(__file__)[-1])[0]
+    logging.basicConfig(
+        format=f"[{FILE_APP}] %(asctime)s.%(msecs)03d [%(levelname)s]: %(message)s",
+        level=logging.INFO,
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
 
     # Load env variables
     load_dotenv(find_dotenv())
+
+    VECTOR_DB_MIN_SCORE = float(os.environ.get("VECTOR_DB_MIN_SCORE", 0.6))
+    VECTOR_DB_SEARCH_LIMIT = int(os.environ.get("VECTOR_DB_SEARCH_LIMIT", 2))
+
+    # Vector DB Collection
+    VDB_COLLECTION = "chatbot_restaurant"
+
+    # Load Sentence Transformer
+    SENTENCE_TRANSFORMER = "all-MiniLM-L6-v2"
+    logging.info(f"Loading sentence transformer, model: {SENTENCE_TRANSFORMER}")
+    VDB_MODEL = SentenceTransformer(SENTENCE_TRANSFORMER)
+
+    # Qdrant (Vector-DB), load it in memory
+    logging.info("Loading VectorDB in memory (Qdrant)")
+    VDB_CLIENT = QdrantClient(":memory:")
+
+    # Create collection
+    logging.info(f"Creating VectorDB collection: {VDB_COLLECTION}")
+    VDB_CLIENT.create_collection(
+        collection_name=VDB_COLLECTION,
+        vectors_config=models.VectorParams(
+            size=384,
+            distance=models.Distance.COSINE,
+        ),
+    )
+
+    # Class instance to load RAG data
+    rag = LoadRAG(
+        topics=[
+            TOPIC_CUSTOMER_PROFILES,
+            TOPIC_RAG,
+        ],
+        vdb_client=VDB_CLIENT,
+        vdb_model=VDB_MODEL,
+        vdb_collection=VDB_COLLECTION,
+    )
 
     kafka = KafkaClient(
         os.environ.get("KAFKA_CONFIG"),
@@ -135,9 +209,18 @@ def main():
             mid = value["mid"]
             username = value["username"]
 
+            # Vector DB cache per session
+            if session_id not in chatVectorDB.keys():
+                chatVectorDB[session_id] = list()
+
+            # Chat cache per session
+            if session_id not in chatMessages.keys():
+                chatMessages[session_id] = list()
+
             if mid is None:  # Logout message
                 chatSessions.pop(session_id, None)
                 chatMessages.pop(session_id, None)
+                chatVectorDB.pop(session_id, None)
                 logging.info(f"{username} has logged out!")
 
             else:
@@ -182,15 +265,39 @@ def main():
                             SystemMessage(context),
                             HumanMessage(query),
                         ]
+
                         logging.info(f"{username} has logged in!")
                         logging.info(f"Message ID: {mid}")
                         logging.info(f"Context: {context}")
                         logging.info(f"Query: {query}")
 
                     else:  # new customer message
-                        customer_message = value["message"] or ""
-                        logging.info(customer_message)
-                        chatMessages[session_id].append(HumanMessage(customer_message))
+                        query = value["message"] or ""
+
+                        # Query Vector DB based on the customer message content
+                        vdb_context = list()
+                        if query:
+                            embeddings = VDB_MODEL.encode([query])
+                            result_search = VDB_CLIENT.search(
+                                collection_name=VDB_COLLECTION,
+                                query_vector=embeddings[0],
+                                limit=VECTOR_DB_SEARCH_LIMIT,
+                            )
+                            for search in result_search:
+                                if search.score >= VECTOR_DB_MIN_SCORE:
+                                    if search.payload["title"] not in chatVectorDB[session_id]:
+                                        chatVectorDB[session_id].append(search.payload["title"])
+                                        vdb_context.append(f"{search.payload['title']}: {search.payload['description']}")
+
+                        if len(vdb_context) > 0:
+                            context = "Additional context:"
+                            for item in vdb_context:
+                                context += f"\n- {item}"
+                            logging.info(context)
+                            chatMessages[session_id].append(SystemMessage(context))
+
+                        logging.info(f"Customer query: {query}")
+                        chatMessages[session_id].append(HumanMessage(query))
 
                     # Submit promt to LLM model and count tokens
                     with get_openai_callback() as cb:
@@ -238,15 +345,3 @@ def main():
                     finally:
                         if kafka.producer:
                             kafka.producer.flush()
-
-
-if __name__ == "__main__":
-    FILE_APP = os.path.splitext(os.path.split(__file__)[-1])[0]
-    logging.basicConfig(
-        format=f"[{FILE_APP}] %(asctime)s.%(msecs)03d [%(levelname)s]: %(message)s",
-        level=logging.INFO,
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-
-    # Start main thread
-    main()

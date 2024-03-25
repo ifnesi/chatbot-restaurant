@@ -57,7 +57,7 @@ def main():
         # Load RAG data into Kafka topics
         for rag, param in config_data.items():
 
-            if rag in ["ai_rules", "policies", "restaurant"]:
+            if rag in ["ai_rules", "policies", "restaurant", "vector_db"]:
                 # Avro serialiser
                 with open(param["schema"], "r") as f:
                     schema_str = f.read()

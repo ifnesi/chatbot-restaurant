@@ -29,6 +29,7 @@ do
 done
 
 exec python admin_plane.py &
-sleep 10
+sleep 3
 exec python chatbot.py &
+sleep 20
 exec python webapp.py

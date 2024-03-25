@@ -1,3 +1,8 @@
+[customer_profiles]
+topic = chatbot-restaurant-customer_profiles
+filename = rag/customer_profiles.json
+schema = schemas/customer_profile.avro
+
 [ai_rules]
 topic = chatbot-restaurant-rag-ai_rules
 filename = rag/ai_rules.json
@@ -13,6 +18,11 @@ topic = chatbot-restaurant-rag-restaurant
 filename = rag/restaurant.json
 schema = schemas/restaurant.avro
 
+[vector_db]
+topic = chatbot-restaurant-rag-vector_db
+filename = rag/vector_db.json
+schema = schemas/vector_db.avro
+
 [main_menu]
 topic_prefix = chatbot-restaurant-rag-menu_
 filename = rag/main_menu.json
@@ -22,8 +32,3 @@ schema = schemas/menu_item.avro
 topic_prefix = chatbot-restaurant-rag-kidsmenu_
 filename = rag/kids_menu.json
 schema = schemas/menu_item.avro
-
-[customer_profiles]
-topic = chatbot-restaurant-customer_profiles
-filename = rag/customer_profiles.json
-schema = schemas/customer_profile.avro

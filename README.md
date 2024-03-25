@@ -52,12 +52,27 @@ OPENAI_API_KEY="<Your_OpenAI_API_Key_Here>"  # Required if LLM_ENGINE=openai (Ge
 GROQ_API_KEY="<Your_GroqCloud_API_Key_Here>" # Required if LLM_ENGINE=groq (Get the API Key here: https://console.groq.com)
 BASE_MODEL="gpt-3.5-turbo-0125"              # Options: gpt-3.5-turbo-0125 (if LLM_ENGINE=openai), mixtral-8x7b-32768 (if LLM_ENGINE=groq)
 MODEL_TEMPERATURE=0.3
+VECTOR_DB_MIN_SCORE=0.2
+VECTOR_DB_SEARCH_LIMIT=2
 EOF
 ```
 
 You are now ready to start the demo!
 
 ### Running the demo
+You can make use of the shell script `./demo.sh` to have the demo started, stopped and restarted:
+```
+usage: ./demo.sh [-h, --help] [-x, --start] [-p, --stop] [-r, --restart]
+
+Demo: Chatbot for a Restaurant (Confluent - All rights reserved)
+
+Options:
+ -h, --help     Show this help message and exit
+ -x, --start    Start demo
+ -p, --stop     Stop demo
+ -r, --restart  Restart microservices
+```
+
 To automatically start the demo, run `./demo.sh -x`, once the docker images are downloaded, it should take less than 2 minutes to have everything up and running.
 ```
 2024-03-22 17:17:02.000 [INFO]: Setting environment variables

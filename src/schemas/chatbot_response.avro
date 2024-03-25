@@ -16,6 +16,11 @@
             ],
             "default": null,
             "doc": "Message unique ID (UTC Epoch) - Same as per customer message"
+        },
+        {
+            "name": "total_tokens",
+            "type": "long",
+            "doc": "Number of tokens on the prompt"
         }
     ]
 }

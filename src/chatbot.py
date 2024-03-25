@@ -2,12 +2,13 @@ import os
 import sys
 import json
 import logging
-import argparse
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 from threading import Thread
 from langchain_groq import ChatGroq
-from langchain.schema import SystemMessage, HumanMessage
+from langchain_openai import ChatOpenAI
+from langchain.callbacks import get_openai_callback
+from langchain.schema import SystemMessage, HumanMessage, AIMessage
 
 from utils import (
     TOPIC_RAG,
@@ -99,14 +100,14 @@ rag = LoadRAG(topics=[TOPIC_CUSTOMER_PROFILES, TOPIC_RAG])
 ########
 # Main #
 ########
-def main(args):
+def main():
 
     # Load env variables
-    load_dotenv(args.env_vars)
+    load_dotenv(find_dotenv())
 
     kafka = KafkaClient(
-        args.config,
-        args.client_id,
+        os.environ.get("KAFKA_CONFIG"),
+        os.environ.get("CLIENT_ID_CHATBOT"),
         set_admin=True,
         set_producer=True,
         set_consumer_latest=True,
@@ -140,17 +141,25 @@ def main(args):
                 logging.info(f"{username} has logged out!")
 
             else:
+                total_tokens = -1
                 try:
 
                     if mid == 0:  # Initial message (after login)
 
                         # LLM Session
-                        chatSessions[session_id] = ChatGroq(
-                            groq_api_key=os.environ.get("GROQ_API_KEY"),
-                            model_name=os.environ.get("BASE_MODEL"),
-                            temperature=float(os.environ.get("MODEL_TEMPERATURE")),
-                            max_tokens=32768,
-                        )
+                        if os.environ.get("LLM_ENGINE").lower() == "openai":
+                            chatSessions[session_id] = ChatOpenAI(
+                                api_key=os.environ.get("OPENAI_API_KEY"),
+                                model=os.environ.get("BASE_MODEL"),
+                                temperature=float(os.environ.get("MODEL_TEMPERATURE")),
+                            )
+
+                        else:
+                            chatSessions[session_id] = ChatGroq(
+                                groq_api_key=os.environ.get("GROQ_API_KEY"),
+                                model_name=os.environ.get("BASE_MODEL"),
+                                temperature=float(os.environ.get("MODEL_TEMPERATURE")),
+                            )
 
                         waiter_name = value["waiter_name"]
                         customer_name = rag.customer_profile[username]["full_name"]
@@ -180,15 +189,20 @@ def main(args):
 
                     else:  # new customer message
                         customer_message = value["message"] or ""
-                        logging.info(
-                            f"Briefly reply to the customer message below in HTML format:\n{customer_message}"
-                        )
-
+                        logging.info(customer_message)
                         chatMessages[session_id].append(HumanMessage(customer_message))
 
-                    # Submit promt to LLM model
-                    response = chatSessions[session_id].invoke(chatMessages[session_id])
+                    # Submit promt to LLM model and count tokens
+                    with get_openai_callback() as cb:
+                        response = chatSessions[session_id].invoke(
+                            chatMessages[session_id]
+                        )
+                        total_tokens = cb.total_tokens
+
+                    # Update chat history
                     chatMessages[session_id].append(response)
+
+                    # Adjust HTML response if required
                     response = adjust_html(
                         response.content or "",
                         "table",
@@ -204,6 +218,7 @@ def main(args):
                         message = {
                             "mid": mid,
                             "response": response,
+                            "total_tokens": total_tokens,
                         }
                         kafka.producer.poll(0.0)
                         kafka.producer.produce(
@@ -233,29 +248,5 @@ if __name__ == "__main__":
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    parser = argparse.ArgumentParser(description="Chatbot - Backend Application")
-    parser.add_argument(
-        "--config",
-        dest="config",
-        type=str,
-        help="Enter config filename (default: config/localhost.ini)",
-        default=os.path.join("config", "localhost.ini"),
-    )
-    parser.add_argument(
-        "--env-vars",
-        dest="env_vars",
-        type=str,
-        help="Enter environment variables file name (default: .env_demo)",
-        default=".env_demo",
-    )
-    parser.add_argument(
-        "--client-id",
-        dest="client_id",
-        type=str,
-        help="Producer/Consumer's Group/Client ID prefix (default: chatbot-beapp)",
-        default="chatbot-app",
-    )
-
-    args = parser.parse_args()
-
-    main(parser.parse_args())
+    # Start main thread
+    main()

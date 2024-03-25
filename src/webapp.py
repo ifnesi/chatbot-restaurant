@@ -4,11 +4,10 @@ import json
 import time
 import uuid
 import logging
-import argparse
 import datetime
 
 from threading import Thread
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
 from faker import Faker
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify
@@ -74,7 +73,8 @@ class ChatbotResponses:
             ):
                 logging.info(f"Message received for session_id {key}: {value}")
                 response_key = f"{key}:{value['mid']}"
-                self.data[response_key] = value["response"]
+                value.pop("mid")
+                self.data[response_key] = value
 
 
 ####################
@@ -203,6 +203,7 @@ def send_message():
         result = {
             "waiter": "",
             "span_id": span_id,
+            "total_tokens": "N/A",
         }
 
         message = dict()
@@ -242,9 +243,10 @@ def send_message():
         timeout = False
         session_start = time.time()
         response_key = f"{session['session_id']}:{mid}"
+        timeout_seconds = int(os.environ.get("TIMEOUT_SECONDS"))
         while response_key not in chatbot_responses.data.keys():
             time.sleep(0.1)
-            if time.time() - session_start > 120:
+            if time.time() - session_start >= timeout_seconds:
                 result[
                     "waiter"
                 ] = "<span class='error_message'>Oops! I got lost in thought. Nudge me again?</span>"
@@ -252,7 +254,10 @@ def send_message():
                 break
 
         if not timeout:
-            result["waiter"] = chatbot_responses.data[response_key]
+            result["waiter"] = chatbot_responses.data[response_key]["response"]
+            result["total_tokens"] = chatbot_responses.data[response_key][
+                "total_tokens"
+            ]
             chatbot_responses.data.pop(response_key, None)
 
     except Exception:
@@ -311,10 +316,14 @@ def logout():
 @app.route("/", methods=["GET"])
 @login_required
 def chatbot():
+    llm_engine = (
+        "OpenAI" if os.environ.get("LLM_ENGINE").lower() == "openai" else "Groq"
+    )
     return render_template(
         "chatbot.html",
         restaurant_name=RESTAURANT_NAME,
         title="Talk to us!",
+        llm_engine=llm_engine,
     )
 
 
@@ -329,51 +338,12 @@ if __name__ == "__main__":
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    parser = argparse.ArgumentParser(description="Chatbot - Web Application")
-    parser.add_argument(
-        "--config",
-        dest="config",
-        type=str,
-        help="Enter config filename (default: config/localhost.ini)",
-        default=os.path.join("config", "localhost.ini"),
-    )
-    parser.add_argument(
-        "--host",
-        dest="host",
-        type=str,
-        help="Hostname to listen on (default: 0.0.0.0)",
-        default="0.0.0.0",
-    )
-    parser.add_argument(
-        "--port",
-        dest="port",
-        type=int,
-        help="Port of the webserver (default: 8888)",
-        default=8888,
-    )
-    parser.add_argument(
-        "--env-vars",
-        dest="env_vars",
-        type=str,
-        help="Enter environment variables file name (default: .env_demo)",
-        default=".env_demo",
-    )
-    parser.add_argument(
-        "--client-id",
-        dest="client_id",
-        type=str,
-        help="Producer/Consumer's Group/Client ID prefix (default: chatbot-webapp)",
-        default="chatbot-webapp",
-    )
-
-    args = parser.parse_args()
-
     # Load env variables
-    load_dotenv(args.env_vars)
+    load_dotenv(find_dotenv())
 
     kafka = KafkaClient(
-        args.config,
-        args.client_id,
+        os.environ.get("KAFKA_CONFIG"),
+        os.environ.get("CLIENT_ID_WEBAPP"),
         set_admin=True,
         set_producer=True,
         set_consumer_latest=True,
@@ -398,8 +368,8 @@ if __name__ == "__main__":
 
     # Start web server
     app.run(
-        host=args.host,
-        port=args.port,
+        host=os.environ.get("WEBAPP_HOST"),
+        port=int(os.environ.get("WEBAPP_PORT")),
         debug=True,
         use_reloader=False,
     )

@@ -2,9 +2,8 @@ import os
 import sys
 import json
 import logging
-import argparse
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 from configparser import ConfigParser
 
 from utils import (
@@ -18,20 +17,20 @@ from utils import (
 )
 
 
-def main(args):
+def main():
     # Load env variables
-    load_dotenv(args.env_vars)
+    load_dotenv(find_dotenv())
 
     kafka = KafkaClient(
-        args.config,
-        args.client_id,
+        os.environ.get("KAFKA_CONFIG"),
+        os.environ.get("CLIENT_ID_ADMIN_PLANE"),
         set_admin=True,
         set_producer=True,
     )
 
     # Data Config
     config_data = ConfigParser()
-    config_data.read(args.config_data)
+    config_data.read(os.environ.get("DATA_LOADER"))
     config_data = dict(config_data)
 
     # Create customer actions topic
@@ -198,34 +197,5 @@ if __name__ == "__main__":
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    parser = argparse.ArgumentParser(description="Chatbot - Admin Plane")
-    parser.add_argument(
-        "--config",
-        dest="config",
-        type=str,
-        help="Enter config filename (default: config/localhost.ini)",
-        default=os.path.join("config", "localhost.ini"),
-    )
-    parser.add_argument(
-        "--client-id",
-        dest="client_id",
-        type=str,
-        help="Producer's Client ID prefix (default: chatbot-admin-plane)",
-        default="chatbot-admin-plane-producer",
-    )
-    parser.add_argument(
-        "--config-data",
-        dest="config_data",
-        type=str,
-        help="Enter config filename for the data to be produced (default: config/default_loader.dat)",
-        default=os.path.join("config", "default_loader.dat"),
-    )
-    parser.add_argument(
-        "--env-vars",
-        dest="env_vars",
-        type=str,
-        help="Enter environment variables file name (default: .env_demo)",
-        default=".env_demo",
-    )
-
-    main(parser.parse_args())
+    # Start main thread
+    main()

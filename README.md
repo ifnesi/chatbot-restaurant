@@ -24,13 +24,31 @@ This demo runs all on Docker and it was only tested on a MAC M1. In case needed 
 To be able to interact with Groq LLM model, you will need the following API key:
 * [GroqCloud](https://console.groq.com) LLM model
 
-Having the API key at hand, create a file named `.env_demo` file by executing the command:
+Having the API key at hand, create a file named `.env` file by executing the command:
 ```bash
-cat > .env_demo <<EOF
-export PASSWORD_SALT="<Any_string_here>"
-export GROQ_API_KEY="<YOUR_GROQ_API_KEY>"
-export BASE_MODEL="mixtral-8x7b-32768"
-export MODEL_TEMPERATURE="0.3"
+cat > .env <<EOF
+# Docker Compose
+CONFLUENT_PLATFORM_VERSION="7.6.0"
+PLATFORM="linux/arm64"
+HOST="localhost"
+# Configuration files
+KAFKA_CONFIG="config/localhost.ini"
+# Admin Plane
+DATA_LOADER="config/default_loader.dat"
+PASSWORD_SALT="<Any_string_here>"            # String to be used to salt hash passwords
+CLIENT_ID_ADMIN_PLANE="chatbot-admin-plane-producer"
+# Web App (Chatbot front-end)
+WEBAPP_HOST="0.0.0.0"
+WEBAPP_PORT=8888
+CLIENT_ID_WEBAPP="chatbot-webapp"
+TIMEOUT_SECONDS=120
+# Chatbot back-end
+CLIENT_ID_CHATBOT="chatbot-app"
+LLM_ENGINE="openai"                          # Options: openai (paid), groq (free)
+OPENAI_API_KEY="<Your_OpenAI_API_Key_Here>"  # Required if LLM_ENGINE=openai (Get the API Key here: https://platform.openai.com/docs/quickstart/account-setup)
+GROQ_API_KEY="<Your_GroqCloud_API_Key_Here>" # Required if LLM_ENGINE=groq (Get the API Key here: https://console.groq.com)
+BASE_MODEL="gpt-3.5-turbo-0125"              # Options: gpt-3.5-turbo-0125 (if LLM_ENGINE=openai), mixtral-8x7b-32768 (if LLM_ENGINE=groq)
+MODEL_TEMPERATURE=0.3
 EOF
 ```
 
@@ -54,7 +72,7 @@ To automatically start the demo, run `./demo.sh -x`, once the docker images are 
  => CACHED [chatbot 3/7] WORKDIR /src
  => CACHED [chatbot 4/7] COPY src/requirements.txt requirements.txt
  => CACHED [chatbot 5/7] RUN pip install --no-cache-dir -r requirements.txt
- => CACHED [chatbot 6/7] COPY .env_demo .
+ => CACHED [chatbot 6/7] COPY .env .
  => CACHED [chatbot 7/7] COPY src/ .
  => [chatbot] exporting to image
  => => exporting layers

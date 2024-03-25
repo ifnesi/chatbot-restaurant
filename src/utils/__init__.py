@@ -32,6 +32,7 @@ TOPIC_CUSTOMER_ACTIONS = "chatbot-restaurant-customer_actions"
 TOPIC_CUSTOMER_PROFILES = "chatbot-restaurant-customer_profiles"
 TOPIC_CHATBOT_RESPONSES = "chatbot-restaurant-chatbot_responses"
 
+
 ###########
 # Classes #
 ###########
@@ -287,9 +288,7 @@ def initial_prompt(
         for n, section in enumerate(sections):
             result += f"- {ord}.{n+1} {section}:\n"
             for m, data in enumerate(rag_data[section].values()):
-                result += (
-                    f"  - {ord}.{n+1}.{m+1} {data['name']} ({data['description']}): "
-                )
+                result += f"  - {ord}.{n+1}.{m+1} {data['name']} ({data['description']}): "
                 items = list()
                 for key, value in data.items():
                     if key not in ["name", "description"]:
@@ -298,15 +297,15 @@ def initial_prompt(
         return result
 
     result = f"You are an AI Assistant for a restaurant. Your name is: {waiter_name}.\n"
-    result += "Here is the context required to answer all customers questions:\n"
-    result += "1. Details about the restaurant you work for:\n"
+    result += "Here is the context required to answer all the customers questions:\n"
+    result += "1. You MUST comply with these AI rules:\n"
+    for key, value in rag_data["ai_rules"].items():
+        result += f"- {key}: {value}\n"
+    result += "2. Details about the restaurant you work for:\n"
     for key, value in rag_data["restaurant"].items():
         result += f"- {key}: {value}\n"
-    result += "2. Restaurant policies:\n"
+    result += "3. Restaurant policies:\n"
     for key, value in rag_data["policies"].items():
-        result += f"- {key}: {value}\n"
-    result += "3. You MUST comply with these AI rules:\n"
-    for key, value in rag_data["ai_rules"].items():
         result += f"- {key}: {value}\n"
     result += "4. Main menu:\n"
     result += get_menu(
@@ -368,4 +367,13 @@ def adjust_html(
     for e in ["h1", "h2", "h3", "h4", "h5"]:
         for header in soup.find_all(e):
             header.name = "h6"
-    return str(soup)
+    replacements = [
+        ["`` `", "```"],
+        ["`` ` ", "```"],
+        ["```html", ""],
+        ["```", ""],
+    ]
+    result = str(soup)
+    for repl in replacements:
+        result = result.replace(repl[0], repl[1])
+    return result

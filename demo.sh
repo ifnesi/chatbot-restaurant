@@ -24,7 +24,8 @@ function logging() {
 }
 
 ## Main
-source .env
+ENV_VAR_FILE=".env"
+source $ENV_VAR_FILE
 if [[ "$1" == "--stop" || "$1" == "-p" ]]; then
   # Stop demo
   logging "Stopping docker compose"
@@ -54,10 +55,28 @@ if [ ! -f $ENV_VAR_FILE ]; then
     echo ""
     echo "Generate the API Key(s) required and have them saved into the file '$ENV_VAR_FILE':"
     echo "cat > $ENV_VAR_FILE <<EOF"
-    echo "export PASSWORD_SALT=\"<Any_string_here>\""
-    echo "export GROQ_API_KEY=\"<YOUR_GROQ_API_KEY>\"  #https://console.groq.com"
-    echo "export BASE_MODEL=\"mixtral-8x7b-32768\""
-    echo "export MODEL_TEMPERATURE=\"0.3\""
+    echo "# Docker Compose"
+    echo "CONFLUENT_PLATFORM_VERSION=\"7.6.0\""
+    echo "PLATFORM=\"linux/arm64\""
+    echo "HOST=\"localhost\""
+    echo "# Configuration files"
+    echo "KAFKA_CONFIG=\"config/localhost.ini\""
+    echo "# Admin Plane"
+    echo "DATA_LOADER=\"config/default_loader.dat\""
+    echo "PASSWORD_SALT=\"<Any_string_here>\"            # String to be used to salt hash passwords"
+    echo "CLIENT_ID_ADMIN_PLANE=\"chatbot-admin-plane-producer\""
+    echo "# Web App (Chatbot front-end)"
+    echo "WEBAPP_HOST=\"0.0.0.0\""
+    echo "WEBAPP_PORT=8888"
+    echo "CLIENT_ID_WEBAPP=\"chatbot-webapp\""
+    echo "TIMEOUT_SECONDS=120"
+    echo "# Chatbot back-end"
+    echo "CLIENT_ID_CHATBOT=\"chatbot-app\""
+    echo "LLM_ENGINE=\"openai\"                          # Options: openai (paid), groq (free)"
+    echo "OPENAI_API_KEY=\"<Your_OpenAI_API_Key_Here>\"  # Required if LLM_ENGINE=openai (Get the API Key here: https://platform.openai.com/docs/quickstart/account-setup)"
+    echo "GROQ_API_KEY=\"<Your_GroqCloud_API_Key_Here>\" # Required if LLM_ENGINE=groq (Get the API Key here: https://console.groq.com)"
+    echo "BASE_MODEL=\"gpt-3.5-turbo-0125\"              # Options: gpt-3.5-turbo-0125 (if LLM_ENGINE=openai), mixtral-8x7b-32768 (if LLM_ENGINE=groq)"
+    echo "MODEL_TEMPERATURE=0.3"
     echo "EOF"
     echo ""
     exit -1

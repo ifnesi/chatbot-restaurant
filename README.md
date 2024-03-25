@@ -1,12 +1,14 @@
 ![image](docs/logo.png)
 
 # chatbot-restaurant
-Chatbot for a restaurant using [GroqCloud](https://console.groq.com) and [Confluent](https://www.confluent.io/lp/confluent-kafka).
+Chatbot for a restaurant using [OpenAI](https://openai.com/), [GroqCloud](https://console.groq.com) and [Confluent](https://www.confluent.io/lp/confluent-kafka).
 
 As GroqCloud is free to use the current LLM model used (`mixtral-8x7b-32768`) has the following limitations:
 - Requests per minute: 30
 - Requests per day: 14,400
 - Tokens per minute: 18,000
+
+If you prefer, you can opt to use OpenAI but it is a paid service.
 
 ## Demo Diagram
 ![image](docs/demo_diagram.png)
@@ -21,8 +23,9 @@ As GroqCloud is free to use the current LLM model used (`mixtral-8x7b-32768`) ha
 ## The Demo
 This demo runs all on Docker and it was only tested on a MAC M1. In case needed change the platform option to your needs (see variable `PLATFORM` on the file `.env`).
 
-To be able to interact with Groq LLM model, you will need the following API key:
-* [GroqCloud](https://console.groq.com) LLM model
+To be able to interact with OpenAI or Groq LLM model, you will need the following API key:
+* [GroqCloud](https://console.groq.com) free LLM engine
+* [OpenAI](https://platform.openai.com/docs/quickstart/account-setup) paid LLM engine
 
 Having the API key at hand, create a file named `.env` file by executing the command:
 ```bash

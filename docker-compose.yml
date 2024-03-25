@@ -1,4 +1,4 @@
-version: '2'
+version: "2"
 
 services:
 
@@ -8,7 +8,7 @@ services:
     container_name: zookeeper
     platform: $PLATFORM
     ports:
-      - "2181:2181"
+      - 2181:2181
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -21,11 +21,11 @@ services:
     depends_on:
       - zookeeper
     ports:
-      - "9092:9092"
-      - "9101:9101"
+      - 9092:9092
+      - 9101:9101
     environment:
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:9094,PLAINTEXT_HOST://localhost:9092
       KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
@@ -40,8 +40,8 @@ services:
       KAFKA_CONFLUENT_SCHEMA_REGISTRY_URL: http://schema-registry:8081
       CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: broker:9094
       CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
-      CONFLUENT_METRICS_ENABLE: 'true'
-      CONFLUENT_SUPPORT_CUSTOMER_ID: 'anonymous'
+      CONFLUENT_METRICS_ENABLE: true
+      CONFLUENT_SUPPORT_CUSTOMER_ID: anonymous
 
   schema-registry:
     image: confluentinc/cp-schema-registry:$CONFLUENT_PLATFORM_VERSION
@@ -51,10 +51,10 @@ services:
     depends_on:
       - broker
     ports:
-      - "8081:8081"
+      - 8081:8081
     environment:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
-      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'broker:9094'
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: broker:9094
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
 
   control-center:
@@ -66,11 +66,10 @@ services:
       - broker
       - schema-registry
     ports:
-      - "9021:9021"
+      - 9021:9021
     environment:
-      CONTROL_CENTER_BOOTSTRAP_SERVERS: 'broker:9094'
-      CONTROL_CENTER_KSQL_KSQLDB1_ADVERTISED_URL: "http://localhost:8088"
-      CONTROL_CENTER_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      CONTROL_CENTER_BOOTSTRAP_SERVERS: broker:9094
+      CONTROL_CENTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
       CONTROL_CENTER_REPLICATION_FACTOR: 1
       CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS: 1
       CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: 1
@@ -86,4 +85,4 @@ services:
       - schema-registry
       - control-center
     ports:
-      - "8888:8888"
+      - $WEBAPP_PORT:$WEBAPP_PORT

@@ -13,8 +13,10 @@ If you prefer, you can opt to use OpenAI but it is a paid service.
 Qdrant, although has the [SaaS Cloud](https://qdrant.tech/documentation/cloud/) option this demo uses the local [in memory version](https://github.com/qdrant/qdrant-client) of it.
 
 ## Demo Diagram
+Overview:
 ![image](docs/demo_diagram.png)
 
+Detailed view:
 ![image](docs/demo_diagram_details.png)
 
 ## Requirements
@@ -115,6 +117,9 @@ To automatically start the demo, run `./demo.sh -x`, once the docker images are 
 At the end of the start up script, it should open the following web pages:
  - Confluent Control Center: http://localhost:9021
  - Chatbot Web application: http://localhost:8888
+
+### Demo in details
+TBD
 
 ### Stopping the demo
 To stop the demo, please run `./demo.sh -p`.

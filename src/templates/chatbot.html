@@ -28,7 +28,7 @@
                     </ul>
                 </li>
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <a class="nav-link dropdown-toggle" href="javascript:void(0);" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         Kids Menu
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
@@ -37,10 +37,13 @@
                         <li><a class="dropdown-item" href="javascript:kids_menu('drinks')">Drinks</a></li>
                         <li><a class="dropdown-item" href="javascript:kids_menu('desserts')">Desserts</a></li>
                     </ul>
-               </li>
+                </li>
             </ul>
             <div class="collapse navbar-collapse" id="navbarSupportedContent">
                 <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <span class="nav-link" aria-current="page">{{ llm_engine }} Tokens <span class="badge rounded-pill bg-danger" id="total_tokens">N/A</span></span>
+                    </li>    
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="javascript:void(0)" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">{{session.customer_name}}</a>
                         <ul class="dropdown-menu" aria-labelledby="navbarDropdown">

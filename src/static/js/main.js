@@ -54,6 +54,7 @@ function send_message(initial, message, wait_prompt) {
             }),
             success: function(data) {
                 $("#customer_message").focus();
+                $("#total_tokens").html(data.total_tokens == -1? "N/A" : data.total_tokens);
                 $("#" + data.span_id).html(data.waiter);
                 $("#time" + data.span_id).html(current_time());
             }

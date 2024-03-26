@@ -68,10 +68,10 @@ class LoadRAG:
                 if topic == TOPIC_CUSTOMER_PROFILES:
                     if value is None:
                         self.customer_profile.pop(key, None)
-                        logging.info(f"Deleted profile for {key}")
+                        logging.info(f"Deleted customer profile for {key}")
                     else:
                         self.customer_profile[key] = value
-                        logging.info(f"Loaded profile for {key}: {json.dumps(value)}")
+                        logging.info(f"Loaded customer profile for {key}: {json.dumps(value)}")
 
                 # Load supporting data (policies, restaurant, vector DB, etc.)
                 else:
@@ -153,6 +153,14 @@ if __name__ == "__main__":
     # Load env variables
     load_dotenv(find_dotenv())
 
+    kafka = KafkaClient(
+        os.environ.get("KAFKA_CONFIG"),
+        os.environ.get("CLIENT_ID_CHATBOT"),
+        FILE_APP,
+        set_consumer_latest=True,
+        set_consumer_earliest=True,
+    )
+
     VECTOR_DB_MIN_SCORE = float(os.environ.get("VECTOR_DB_MIN_SCORE", 0.3))
     VECTOR_DB_SEARCH_LIMIT = int(os.environ.get("VECTOR_DB_SEARCH_LIMIT", 2))
 
@@ -187,15 +195,6 @@ if __name__ == "__main__":
         vdb_client=VDB_CLIENT,
         vdb_model=VDB_MODEL,
         vdb_collection=VDB_COLLECTION,
-    )
-
-    kafka = KafkaClient(
-        os.environ.get("KAFKA_CONFIG"),
-        os.environ.get("CLIENT_ID_CHATBOT"),
-        set_admin=True,
-        set_producer=True,
-        set_consumer_latest=True,
-        set_consumer_earliest=True,
     )
 
     # Start RAG / Customer Profile Consumer thread (Kafka consumer #1)

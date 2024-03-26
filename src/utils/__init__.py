@@ -7,6 +7,7 @@ import signal
 import hashlib
 import logging
 
+from queue import Queue
 from bs4 import BeautifulSoup
 from datetime import date, datetime
 from configparser import ConfigParser
@@ -29,6 +30,7 @@ from confluent_kafka.schema_registry.avro import AvroSerializer, AvroDeserialize
 # Global Variables #
 ####################
 TOPIC_RAG = "^chatbot-restaurant-rag-.*"
+TOPIC_LOGGING = "chatbot-restaurant-logs"
 TOPIC_CUSTOMER_ACTIONS = "chatbot-restaurant-customer_actions"
 TOPIC_CUSTOMER_PROFILES = "chatbot-restaurant-customer_profiles"
 TOPIC_CHATBOT_RESPONSES = "chatbot-restaurant-chatbot_responses"
@@ -37,17 +39,46 @@ TOPIC_CHATBOT_RESPONSES = "chatbot-restaurant-chatbot_responses"
 ###########
 # Classes #
 ###########
+class KafkaLogHandler(logging.StreamHandler):
+    def __init__(
+        self,
+        kafka,
+        topic: str,
+    ) -> None:
+        super(KafkaLogHandler, self).__init__()
+        self.string_serializer = StringSerializer("utf_8")
+        self.kafka = kafka
+        self.topic = topic
+
+    def emit(
+        self,
+        record: str,
+    ) -> None:
+        if self.kafka.producer_log:
+            try:
+                self.kafka.producer_log.poll(0.0)
+                self.kafka.producer_log.produce(
+                    topic=self.topic,
+                    value=self.string_serializer(self.format(record)),
+                )
+                self.kafka.producer_log.flush()
+            except Exception:
+                pass
+            finally:
+                self.flush()
+
+
 class KafkaClient:
     def __init__(
         self,
         config_file: str,
         client_id: str,
-        set_admin: bool = False,
-        set_producer: bool = False,
+        file_app,
         set_consumer_earliest: bool = False,
         set_consumer_latest: bool = False,
     ) -> None:
         self.producer = None
+        self.producer_log = None
         self.admin_client = None
         self.consumer_latest = None
         self.consumer_earliest = None
@@ -72,14 +103,14 @@ class KafkaClient:
             "client.id": f"{client_id}-producer",
         }
         self._producer_config.update(dict(self._config["kafka"]))
-        if set_producer:
-            self.producer = Producer(self._producer_config)
+        self.producer = Producer(self._producer_config)
+        self._producer_config["client.id"] = f"{client_id}-producer-logger"
+        self.producer_log = Producer(self._producer_config)
 
         # Admin
-        if set_admin:
-            self.admin_client = AdminClient(self._producer_config)
-            # Get list of topics
-            self.topic_list = self.get_topics()
+        self.admin_client = AdminClient(self._producer_config)
+        # Get list of topics
+        self.topic_list = self.get_topics()
 
         # Consumer Earliest
         if set_consumer_earliest:
@@ -103,6 +134,22 @@ class KafkaClient:
             self._consumer_config_latest.update(dict(self._config["kafka"]))
             self.consumer_latest = Consumer(self._consumer_config_latest)
 
+        # Add Kafka log handler
+        self.create_topic(
+            TOPIC_LOGGING,
+            cleanup_policy="delete",
+            sync=True,
+        )
+        kafka_log_handler = KafkaLogHandler(
+            self,
+            TOPIC_LOGGING,
+        )
+        kafka_log_handler.setLevel(logging.INFO)
+        kafka_log_handler.setFormatter(
+            logging.Formatter(f"[{file_app}] %(asctime)s.%(msecs)03d [%(levelname)s]: %(message)s")
+        )
+        logging.getLogger().addHandler(kafka_log_handler)
+
     def signal_handler(
         self,
         sig,
@@ -113,6 +160,12 @@ class KafkaClient:
             try:
                 self.producer.flush()
                 self.producer = None
+            except Exception:
+                logging.error(sys_exc(sys.exc_info()))
+
+            try:
+                self.producer_log.flush()
+                self.producer_log = None
             except Exception:
                 logging.error(sys_exc(sys.exc_info()))
 
@@ -253,11 +306,12 @@ class KafkaClient:
                 logging.error(sys_exc(sys.exc_info()))
 
 
-class CustomerProfiles:
-    """Load customer profile in memory"""
+class CustomerProfilesAndLogs:
+    """Load customer profile in memory and Logs into a queue"""
 
     def __init__(self, topics) -> None:
         self.data = dict()
+        self.queue = Queue()
         self.topics = topics
 
     def consumer(self, kafka) -> None:
@@ -268,10 +322,16 @@ class CustomerProfiles:
             ):
                 if value is None:
                     self.data.pop(key, None)
-                    logging.info(f"Deleted profile for {key}")
+                    logging.info(f"Deleted customer profile for {key}")
                 else:
-                    self.data[key] = value
-                    logging.info(f"Loaded profile for {key}: {json.dumps(value)}")
+                    if topic == TOPIC_LOGGING:
+                        value = value.strip()
+                        while "\n" in value:
+                            value = value.replace("\n", "<br>")
+                        self.queue.put(f"{value}<br>")
+                    else:
+                        self.data[key] = value
+                        logging.info(f"Loaded customer profile for {key}: {json.dumps(value)}")
 
 
 #############

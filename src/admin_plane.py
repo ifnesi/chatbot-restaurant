@@ -19,6 +19,8 @@ from utils import (
 
 if __name__ == "__main__":
     FILE_APP = os.path.splitext(os.path.split(__file__)[-1])[0]
+
+    # Screen log handler
     logging.basicConfig(
         format=f"[{FILE_APP}] %(asctime)s.%(msecs)03d [%(levelname)s]: %(message)s",
         level=logging.INFO,
@@ -31,8 +33,7 @@ if __name__ == "__main__":
     kafka = KafkaClient(
         os.environ.get("KAFKA_CONFIG"),
         os.environ.get("CLIENT_ID_ADMIN_PLANE"),
-        set_admin=True,
-        set_producer=True,
+        FILE_APP,
     )
 
     # Data Config

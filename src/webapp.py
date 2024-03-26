@@ -21,13 +21,14 @@ from flask_login import (
 )
 
 from utils import (
+    TOPIC_LOGGING,
     TOPIC_CHATBOT_RESPONSES,
     TOPIC_CUSTOMER_PROFILES,
     TOPIC_CUSTOMER_ACTIONS,
     KafkaClient,
     SerializationContext,
     MessageField,
-    CustomerProfiles,
+    CustomerProfilesAndLogs,
     assess_password,
     sys_exc,
 )
@@ -46,7 +47,7 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
 log = logging.getLogger("werkzeug")
-log.setLevel(logging.INFO)
+log.setLevel(logging.WARNING)
 
 
 ###########
@@ -82,7 +83,7 @@ class ChatbotResponses:
 ####################
 kafka = None
 customer_action_serialiser = None
-customer_profiles = CustomerProfiles(topics=[TOPIC_CUSTOMER_PROFILES])
+customer_profiles_and_logs = CustomerProfilesAndLogs(topics=[TOPIC_CUSTOMER_PROFILES, TOPIC_LOGGING])
 chatbot_responses = ChatbotResponses(topics=[TOPIC_CHATBOT_RESPONSES])
 
 # Restaurant name
@@ -133,8 +134,25 @@ def profiles():
         "profiles.html",
         restaurant_name=RESTAURANT_NAME,
         title="Profiles",
-        profiles=customer_profiles.data,
+        profiles=customer_profiles_and_logs.data,
     )
+
+
+@app.route("/logs", methods=["GET"])
+def logs():
+    return render_template(
+        "logs.html",
+        restaurant_name=RESTAURANT_NAME,
+        title="Logs",
+    )
+
+
+@app.route("/get-logs", methods=["GET"])
+def get_logs():
+    logs_data = list()
+    while not customer_profiles_and_logs.queue.empty():
+        logs_data.append(customer_profiles_and_logs.queue.get())
+    return "<br>".join(logs_data)
 
 
 @app.route("/login", methods=["POST"])
@@ -143,9 +161,9 @@ def do_login():
     username = request_form["username"]
     password = request_form["password"]
 
-    if username in customer_profiles.data.keys():
+    if username in customer_profiles_and_logs.data.keys():
         password_salt = os.environ.get("PASSWORD_SALT")
-        hashed_password = customer_profiles.data[username]["hashed_password"]
+        hashed_password = customer_profiles_and_logs.data[username]["hashed_password"]
         if assess_password(
             password_salt,
             hashed_password,
@@ -156,7 +174,7 @@ def do_login():
             session["waiter_name"] = fake.name()
             session["session_id"] = uuid.uuid4().hex
             session["restaurant_name"] = RESTAURANT_NAME
-            session["customer_name"] = customer_profiles.data[username]["full_name"]
+            session["customer_name"] = customer_profiles_and_logs.data[username]["full_name"]
             session["username"] = username
             login_user(
                 User(session["session_id"]),
@@ -344,8 +362,7 @@ if __name__ == "__main__":
     kafka = KafkaClient(
         os.environ.get("KAFKA_CONFIG"),
         os.environ.get("CLIENT_ID_WEBAPP"),
-        set_admin=True,
-        set_producer=True,
+        FILE_APP,
         set_consumer_latest=True,
         set_consumer_earliest=True,
     )
@@ -354,9 +371,9 @@ if __name__ == "__main__":
         schema_str = f.read()
     customer_action_serialiser = kafka.avro_serialiser(schema_str)
 
-    # Start Customer Profiles Consumer thread
+    # Start Customer Profiles and Logs Consumer thread
     Thread(
-        target=customer_profiles.consumer,
+        target=customer_profiles_and_logs.consumer,
         args=(kafka,),
     ).start()
 

@@ -1,15 +1,14 @@
 import os
 import sys
 import json
-import hashlib
 import logging
 
 from dotenv import load_dotenv, find_dotenv
 from threading import Thread
 from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
-from langchain.callbacks import get_openai_callback
 from langchain.schema import SystemMessage, HumanMessage
+from langchain_community.callbacks.manager import get_openai_callback
 
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
@@ -23,6 +22,7 @@ from utils import (
     KafkaClient,
     SerializationContext,
     MessageField,
+    md5_int,
     sys_exc,
     adjust_html,
     calculate_age,
@@ -73,13 +73,45 @@ class LoadRAG:
                         self.customer_profile[key] = value
                         logging.info(f"Loaded profile for {key}: {json.dumps(value)}")
 
-                # Load RAG
+                # Load supporting data (policies, restaurant, vector DB, etc.)
                 else:
                     rag_name = topic.split("-")[-1]
                     prefix, *suffix = rag_name.split("_")
 
+                    # Load Vector DB data
+                    if rag_name in ["vector_db"]:
+                        id = md5_int(key)
+                        
+                        if value is None:  # drop from Vector DB by its ID
+                            self.vdb_client.delete(
+                                collection_name=self.vdb_collection.name,
+                                points_selector=models.PointIdsList(
+                                    points=[id],
+                                ),
+                            )
+
+                        else:
+                            sentence = f"{key}: {value['description']}"
+                            embeddings = self.vdb_model.encode([sentence])
+
+                            # Upsert collection
+                            logging.info(f"Upserting Vector DB collection {self.vdb_collection}: {id} | {sentence}")
+                            self.vdb_client.upsert(
+                                collection_name=self.vdb_collection,
+                                points=[
+                                    models.PointStruct(
+                                        id=id,
+                                        vector=embeddings[0],
+                                        payload={
+                                            "title": key,
+                                            "description": value['description'],
+                                        },
+                                    ),
+                                ],
+                            )
+
                     # Main and Kids menu
-                    if prefix in ["menu", "kidsmenu"]:
+                    elif prefix in ["menu", "kidsmenu"]:
                         suffix = "_".join(suffix)
                         if prefix not in self.rag.keys():
                             self.rag[prefix] = dict()
@@ -90,28 +122,6 @@ class LoadRAG:
                             self.rag[prefix][suffix].pop(key, None)
                         else:
                             self.rag[prefix][suffix][key] = value
-
-                    # Load sentences into the Vector DB
-                    elif rag_name in ["vector_db"]:
-                        sentence = f"{key}: {value['description']}"
-                        embeddings = self.vdb_model.encode([sentence])
-
-                        # Upsert collection
-                        id = int(hashlib.md5(key.encode("utf-8")).hexdigest(), 16)
-                        logging.info(f"Upserting Vector DB collection {self.vdb_collection}: {id} | {sentence}")
-                        self.vdb_client.upsert(
-                            collection_name=self.vdb_collection,
-                            points=[
-                                models.PointStruct(
-                                    id=id,
-                                    vector=embeddings[0],
-                                    payload={
-                                        "title": key,
-                                        "description": value['description'],
-                                    },
-                                ),
-                            ],
-                        )
 
                     # Policies, Restaurant and AI Rules
                     else:
@@ -124,9 +134,9 @@ class LoadRAG:
                             self.rag[rag_name][key] = value["description"]
 
                     if value is None:
-                        logging.info(f"Deleted RAG {rag_name} for {key}")
+                        logging.info(f"Deleted data {rag_name} for {key}")
                     else:
-                        logging.info(f"Loaded RAG {rag_name}: {json.dumps(value)}")
+                        logging.info(f"Loaded data {rag_name}: {json.dumps(value)}")
 
 
 ########
@@ -143,7 +153,7 @@ if __name__ == "__main__":
     # Load env variables
     load_dotenv(find_dotenv())
 
-    VECTOR_DB_MIN_SCORE = float(os.environ.get("VECTOR_DB_MIN_SCORE", 0.6))
+    VECTOR_DB_MIN_SCORE = float(os.environ.get("VECTOR_DB_MIN_SCORE", 0.3))
     VECTOR_DB_SEARCH_LIMIT = int(os.environ.get("VECTOR_DB_SEARCH_LIMIT", 2))
 
     # Vector DB Collection
@@ -230,6 +240,8 @@ if __name__ == "__main__":
                     if mid == 0:  # Initial message (after login)
 
                         # LLM Session
+                        chatVectorDB[session_id] = list()  # reset cache for that session (in case of page refresh)
+
                         if os.environ.get("LLM_ENGINE").lower() == "openai":
                             chatSessions[session_id] = ChatOpenAI(
                                 api_key=os.environ.get("OPENAI_API_KEY"),
@@ -289,6 +301,7 @@ if __name__ == "__main__":
                                         chatVectorDB[session_id].append(search.payload["title"])
                                         vdb_context.append(f"{search.payload['title']}: {search.payload['description']}")
 
+                        # In case of any relevant vector DB document is found, add it to the System context
                         if len(vdb_context) > 0:
                             context = "Additional context:"
                             for item in vdb_context:

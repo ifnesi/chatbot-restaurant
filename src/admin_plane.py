@@ -17,7 +17,14 @@ from utils import (
 )
 
 
-def main():
+if __name__ == "__main__":
+    FILE_APP = os.path.splitext(os.path.split(__file__)[-1])[0]
+    logging.basicConfig(
+        format=f"[{FILE_APP}] %(asctime)s.%(msecs)03d [%(levelname)s]: %(message)s",
+        level=logging.INFO,
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
     # Load env variables
     load_dotenv(find_dotenv())
 
@@ -38,6 +45,7 @@ def main():
         kafka.create_topic(
             TOPIC_CUSTOMER_ACTIONS,
             cleanup_policy="delete",
+            sync=True,
         )
     except Exception:
         logging.error(sys_exc(sys.exc_info()))
@@ -48,6 +56,7 @@ def main():
         kafka.create_topic(
             TOPIC_CHATBOT_RESPONSES,
             cleanup_policy="delete",
+            sync=True,
         )
     except Exception:
         logging.error(sys_exc(sys.exc_info()))
@@ -66,7 +75,10 @@ def main():
                 topic = param["topic"]
                 # Create new topic if required
                 try:
-                    kafka.create_topic(topic)
+                    kafka.create_topic(
+                        topic,
+                        sync=True,
+                    )
                 except Exception:
                     logging.error(sys_exc(sys.exc_info()))
                 else:
@@ -111,7 +123,10 @@ def main():
 
                     # Create new topic if required
                     try:
-                        kafka.create_topic(topic)
+                        kafka.create_topic(
+                            topic,
+                            sync=True,
+                        )
                     except Exception:
                         logging.error(sys_exc(sys.exc_info()))
                     else:
@@ -146,7 +161,10 @@ def main():
                 # Create new topic if required
                 topic = param["topic"]
                 try:
-                    kafka.create_topic(topic)
+                    kafka.create_topic(
+                        topic,
+                        sync=True,
+                    )
                 except Exception:
                     logging.error(sys_exc(sys.exc_info()))
                 else:
@@ -187,15 +205,3 @@ def main():
             kafka.producer.flush()
         except Exception:
             logging.error(sys_exc(sys.exc_info()))
-
-
-if __name__ == "__main__":
-    FILE_APP = os.path.splitext(os.path.split(__file__)[-1])[0]
-    logging.basicConfig(
-        format=f"[{FILE_APP}] %(asctime)s.%(msecs)03d [%(levelname)s]: %(message)s",
-        level=logging.INFO,
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-
-    # Start main thread
-    main()

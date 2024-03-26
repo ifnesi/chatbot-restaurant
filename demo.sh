@@ -25,8 +25,6 @@ function logging() {
 }
 
 ## Main
-ENV_VAR_FILE=".env"
-source $ENV_VAR_FILE
 if [[ "$1" == "--stop" || "$1" == "-p" ]]; then
   # Stop demo
   logging "Stopping docker compose"
@@ -53,6 +51,7 @@ elif [[ "$1" != "--start" && "$1" != "-x" ]]; then
 fi
 
 # Start demo
+ENV_VAR_FILE=".env"
 logging "Setting environment variables"
 if [ ! -f $ENV_VAR_FILE ]; then
     logging "File '$ENV_VAR_FILE' not found!" "ERROR"

@@ -65,3 +65,8 @@ p {
 .nav-link:hover {
   background-color: #e9ecef;
 }
+
+.logs {
+  font-size: 14px;
+  font-family: monospace, 'Courier New';
+}

@@ -1,0 +1,9 @@
+{% extends 'header.html' %}
+
+{% block header %}
+<script src="{{ url_for('static', filename='js/logs.js') }}?v=1"></script>
+{% endblock %}
+
+{% block content %}
+<div id="logs" class="logs text-light"></div>
+{% endblock %}

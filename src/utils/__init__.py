@@ -1,6 +1,7 @@
 import sys
 import hmac
 import json
+import time
 import base64
 import signal
 import hashlib
@@ -179,6 +180,8 @@ class KafkaClient:
         num_partitions: int = 1,
         replication_factor: int = 1,
         cleanup_policy: str = "compact",
+        sync: bool = False,
+        timeout_seconds_sync: int = 30,
     ) -> None:
         if topic not in self.topic_list:
             logging.info(f"Creating topic '{topic}'...")
@@ -194,6 +197,17 @@ class KafkaClient:
                     )
                 ]
             )
+            # The create topic API is asynchronous, so to make it synchronous it is needed to check whether the topic has been created
+            if sync:
+                start_time = time.time()
+                topic_created = False
+                while time.time() - start_time < timeout_seconds_sync:
+                    time.sleep(1)
+                    if topic in self.get_topics():
+                        topic_created = True
+                        break
+                if not topic_created:
+                    raise KafkaException(f"Unable to create topic '{topic}': Timeout")
         else:
             logging.info(f"Topic '{topic}' already exists")
 
@@ -288,7 +302,9 @@ def initial_prompt(
         for n, section in enumerate(sections):
             result += f"- {ord}.{n+1} {section}:\n"
             for m, data in enumerate(rag_data[section].values()):
-                result += f"  - {ord}.{n+1}.{m+1} {data['name']} ({data['description']}): "
+                result += (
+                    f"  - {ord}.{n+1}.{m+1} {data['name']} ({data['description']}): "
+                )
                 items = list()
                 for key, value in data.items():
                     if key not in ["name", "description"]:
@@ -297,7 +313,6 @@ def initial_prompt(
         return result
 
     result = f"You are an AI Assistant for a restaurant. Your name is: {waiter_name}.\n"
-    result += "Here is the context required to answer all the customers questions:\n"
     result += "1. You MUST comply with these AI rules:\n"
     for key, value in rag_data["ai_rules"].items():
         result += f"- {key}: {value}\n"
@@ -322,7 +337,14 @@ def initial_prompt(
     )
     result += f"5. Kids menu:\n"
     result += get_menu(
-        rag_data["kidsmenu"], ["starters", "mains", "drinks", "desserts"], 5
+        rag_data["kidsmenu"],
+        [
+            "starters",
+            "mains",
+            "drinks",
+            "desserts",
+        ],
+        5,
     )
     return result
 
@@ -371,9 +393,14 @@ def adjust_html(
         ["`` `", "```"],
         ["`` ` ", "```"],
         ["```html", ""],
+        ["```json", ""],
         ["```", ""],
     ]
     result = str(soup)
     for repl in replacements:
         result = result.replace(repl[0], repl[1])
     return result
+
+
+def md5_int(text: bytes) -> int:
+    return int(hashlib.md5(text.encode("utf-8")).hexdigest(), 16)

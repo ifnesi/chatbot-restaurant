@@ -29,7 +29,6 @@ do
 done
 
 exec python admin_plane.py &
-sleep 3
 exec python chatbot.py &
-sleep 20
+sleep 30 # Allow sentence transformer to load
 exec python webapp.py

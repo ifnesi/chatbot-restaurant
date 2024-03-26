@@ -80,7 +80,7 @@ if [ ! -f $ENV_VAR_FILE ]; then
     echo "GROQ_API_KEY=\"<Your_GroqCloud_API_Key_Here>\" # Required if LLM_ENGINE=groq (Get the API Key here: https://console.groq.com)"
     echo "BASE_MODEL=\"gpt-3.5-turbo-0125\"              # Options: gpt-3.5-turbo-0125 (if LLM_ENGINE=openai), mixtral-8x7b-32768 (if LLM_ENGINE=groq)"
     echo "MODEL_TEMPERATURE=0.3"
-    echo "VECTOR_DB_MIN_SCORE=0.2"
+    echo "VECTOR_DB_MIN_SCORE=0.3"
     echo "VECTOR_DB_SEARCH_LIMIT=2"
     echo "EOF"
     echo ""

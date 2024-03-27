@@ -229,13 +229,17 @@ class KafkaClient:
         err,
         msg,
     ) -> None:
+        if isinstance(msg.key(), bytes):
+            key = msg.key().decode("utf-8")
+        else:
+            key = msg.key()
         if err is not None:
             logging.error(
-                f"Delivery failed for record {msg.key()} for the topic '{msg.topic()}': {err}"
+                f"Delivery failed for record/key '{key}' for the topic '{msg.topic()}': {err}"
             )
         else:
             logging.info(
-                f"Record {msg.key()} successfully produced to topic/partition '{msg.topic()}/{msg.partition()}' at offset #{msg.offset()}"
+                f"Record/key '{key}' successfully produced to topic/partition '{msg.topic()}/{msg.partition()}' at offset #{msg.offset()}"
             )
 
     def create_topic(
@@ -324,7 +328,12 @@ class CustomerProfilesAndLogs:
         self.data = dict()
         self.queue = Queue()
         self.topics = topics
-        self._pattern = re.compile("^\[(.*?)\]")
+        self._pattern_app = re.compile("^\[(.*?)\]")
+        self._pattern_level = re.compile("\[([A-Z]+)\]\:")
+
+    def _get_regex(self, pattern: re.Pattern, text: str) -> str:
+        result = pattern.findall(text) or [""]
+        return result[0]
 
     def consumer(self, kafka) -> None:
         while True:
@@ -338,13 +347,12 @@ class CustomerProfilesAndLogs:
                 else:
                     if topic == TOPIC_LOGGING:  # Add log data into the local queue
 
-                        file_app = self._pattern.findall(value)
-                        if len(file_app) > 0:
-                            file_app = file_app[0]
-                        else:
-                            file_app = ""
+                        file_app = self._get_regex(self._pattern_app, value)
+                        value = value.strip().replace(f"[{file_app}]", f"<b>[{file_app}]</b>")
+                        
+                        log_level = self._get_regex(self._pattern_level, value)
+                        value = value.strip().replace(f"[{log_level}]: ", f"<b>[{log_level}]</b><br>")
 
-                        value = value.strip()
                         while "\n" in value:
                             value = value.replace("\n", "<br>")
                         self.queue.put(f"<div class='log-{file_app}'>{value}</div>")

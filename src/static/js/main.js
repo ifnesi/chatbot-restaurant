@@ -64,21 +64,21 @@ function send_message(initial, context, query, wait_prompt) {
 }
 
 function main_menu(section) {
-    var context = "response: HTML format, making sure to highlight the allergies according to the customer profile and alcoholic restrictions based on the customer age";
+    var context = "New customer message, response must be in HTML format, make sure to highlight the allergies and alcoholic restrictions according to the customer profile";
     var query = "Show me the " + section + " on the main menu";
     var wait_prompt = "Getting you the " + section.replaceAll("_", " ") + " on the main menu...";
     send_message(0, context, query, wait_prompt);
 }
 
 function kids_menu(section) {
-    var context = "response: HTML format, making sure to highlight the allergies according to the customer profile and alcoholic restrictions based on the customer age";
+    var context = "New customer message, response must be in HTML format, make sure to highlight the allergies and alcoholic restrictions according to the customer profile";
     var query = "Show me the " + section + " on the kids menu";
     var wait_prompt = "Getting you the " + section.replaceAll("_", " ") + " on the kids menu...";
     send_message(0, context, query, wait_prompt);
 }
 
 function my_bill() {
-    var context = "response: HTML format, making sure to apply the service tax and discount as per restaurant policies, if applicable";
+    var context = "New customer message, response must be in HTML format, make sure to apply the service tax and discount as per restaurant policies";
     var query = "Show me my current bill";
     var wait_prompt = "Checking on your bill...";
     send_message(0, context, query, wait_prompt);

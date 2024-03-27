@@ -318,7 +318,7 @@ if __name__ == "__main__":
                                             f"{search.payload['title']}: {search.payload['description']}"
                                         )
 
-                            logging.info(f"Customer query: {query}")
+                            logging.info(f"Customer query (mid: {mid}): {query}")
 
                         # In case of any relevant vector DB document is found, add it to the System context
                         if len(vdb_context) > 0:

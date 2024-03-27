@@ -119,7 +119,50 @@ At the end of the start up script, it should open the following web pages:
  - Chatbot Web application: http://localhost:8888
 
 ### Demo in details
-TBD
+As soon as the demo starts, the admin plane python script (`admin_plane.py`) will publishes the information below to the corresponding topics. That is done according to the data loader configuration file set on the environment variable `DATA_LOADER`, byt default it is `config/default_loader.dat`:
+ - Customer Profiles:
+   - Data file: `rag/customer_profiles.json`
+   - Schema: `schemas/customer_profile.avro`
+   - Topic: `chatbot-restaurant-customer_profiles`
+ - AI Rules:
+   - Data file = `rag/ai_rules.json`
+   - Schema = `schemas/ai_rules.avro`
+   - Topic = `chatbot-restaurant-rag-ai_rules`
+ - Restaurant Policies
+   - Data file = `rag/policies.json`
+   - Schema = `schemas/policies.avro`
+   - Topic = `chatbot-restaurant-rag-policies`
+ - Restaurant Information
+   - Data file = `rag/restaurant.json`
+   - Schema = `schemas/restaurant.avro`
+   - Topic = `chatbot-restaurant-rag-restaurant`
+ - Vector DB
+   - Data file = `rag/vector_db.json`
+   - Schema = `schemas/vector_db.avro`
+   - Topic = `chatbot-restaurant-rag-vector_db`
+ - Main Menu
+   - Data file = `rag/main_menu.json`
+   - Schema = `schemas/menu_item.avro`
+   - Topic prefix = `chatbot-restaurant-rag-menu_`
+ - Kids Menu
+   - Data file = `rag/kids_menu.json`
+   - Schema = `schemas/menu_item.avro`
+   - Topic prefix = `chatbot-restaurant-rag-kidsmenu_`
+
+In parallel to that the back-end chatbot microservices (python script `chatbot.py`) will start and perform the following tasks:
+ - Thread #1:
+   - Load in memory the Customer Profiles, AI Rules, Restaurant Policies, Restaurant Information, Main Menu and Kids Menu (as consumed from the corresponding topics)
+   - Run a Qdrant vector search engine in memory, create a local collection (`chatbot_restaurant`), generate the embeddings (using sentence transformer `all-MiniLM-L6-v2`) and load add Vector DB data (as consumed from the corresponding topic) into it
+ - Thread #2:
+   - Consume the customer messages from topic `chatbot-restaurant-customer_actions` and post it to the LLM engine (as set on the environment variable `LLM_ENGINE`). It uses LangChain to be able to seemlesly interact with OpenAI and GroqCloud. All messages are buffered in memory per user session and cleared after logout. This can be optmised in order to reduce the number of tokens passed everything to the LLM engine
+   - Once it receives the response from the LLM engine it will have it published into the topic `chatbot-restaurant-chatbot_responses`
+
+The last python script is the web application (`webapp.py`):
+ - It communicates with the back-end chatbot microservices using the [CQRS pattern](https://www.confluent.io/resources/ebook/designing-event-driven-systems)
+ - After successfuly login, the customer messages will be published to the topic `chatbot-restaurant-customer_actions` so it can be processed by the back-end microservices
+ - It will also consume the messages from the topic `chatbot-restaurant-chatbot_responses` matching the sessionID with the messageID (mid), then presenting it to the corresponding customer
+
+All three python scripts have two logging handles, one to the console and another one to the Kafka topic `chatbot-restaurant-logs`. The Web Application will consume all messages in that topic so it can be rendered when accessing http://localhost:8888/logs.
 
 ### Stopping the demo
 To stop the demo, please run `./demo.sh -p`.

@@ -20,12 +20,14 @@ $( document ).ready(function() {
     send_message(1);
 });
 
-function send_message(initial, message, wait_prompt) {
+function send_message(initial, context, query, wait_prompt) {
+    context = context || "";
     wait_prompt = wait_prompt || "AI assistant is typing...";
     var chat_history = "";
     var customer_message = $("#customer_message").val();
-    if (message !== undefined) {
-        customer_message = message;
+
+    if (query !== undefined) {
+        customer_message = query;
     }
     else if (customer_message && initial == 0) {
         $("#customer_message").val("");
@@ -35,9 +37,7 @@ function send_message(initial, message, wait_prompt) {
     if (customer_message || initial > 0) {
         var spanID = "_id-" + parseInt((new Date()).getTime()) + parseInt(Math.random() * 10000);
         chat_history += '<img src="/static/images/waiter.png" class="p-1" height="30px"></img><span class="badge bg-primary text-light">' + waiter_name + '</span><span id="time' + spanID + '" class="message text-light">...</span><div id="' + spanID + '" class="chatbot message mt-1 mb-1"><span class="typing blink">' + wait_prompt + '</span></div>';
-
         $("#chat-history").append(chat_history);
-
         var textarea = document.getElementById("chat-history");
         textarea.scrollTop = textarea.scrollHeight;
 
@@ -49,7 +49,8 @@ function send_message(initial, message, wait_prompt) {
             dataType: "json",
             data: JSON.stringify({
                 initial_message: initial,
-                customer_message: customer_message,
+                context: context,
+                query: customer_message,
                 span_id: spanID,
             }),
             success: function(data) {
@@ -63,15 +64,24 @@ function send_message(initial, message, wait_prompt) {
 }
 
 function main_menu(section) {
-    send_message(0, "Show the " + section + " on the main menu in HTML format, make sure to highlight the allergies according to the customer profile and alcoholic restrictions based on their age", "Getting you the " + section.replaceAll("_", " ") + " on the main menu...");
+    var context = "Respond in HTML format, make sure to highlight the allergies according to the customer profile and alcoholic restrictions based on their age";
+    var query = "Show me the " + section + " on the main menu";
+    var wait_prompt = "Getting you the " + section.replaceAll("_", " ") + " on the main menu...";
+    send_message(0, context, query, wait_prompt);
 }
 
 function kids_menu(section) {
-    send_message(0, "Show the " + section + " on kids menu in HTML format, make sure to highlight the allergies according to the customer profile", "Getting you the " + section.replaceAll("_", " ") + " on the kids menu...");
+    var context = "Respond in HTML format, make sure to highlight the allergies according to the customer profile and alcoholic restrictions based on their age";
+    var query = "Show me the " + section + " on the kids menu";
+    var wait_prompt = "Getting you the " + section.replaceAll("_", " ") + " on the kids menu...";
+    send_message(0, context, query, wait_prompt);
 }
 
 function my_bill() {
-    send_message(0, "Show the current bill in HTML format, make sure to apply the service tax and discount if applicable", "Preparing your bill...");
+    var context = "Respond in HTML format, make sure to apply the service tax and discount as per restaurant policies, if applicable";
+    var query = "Show me my current bill";
+    var wait_prompt = "Checking on your bill...";
+    send_message(0, context, query, wait_prompt);
 }
 
 function current_time() {

@@ -72,7 +72,14 @@ class ChatbotResponses:
                 kafka.consumer_latest,
                 self.topics,
             ):
-                logging.info(f"Message received for session_id {key}: {value}")
+                response_log = (value["response"] or "").strip()
+                while ">\n<" in response_log:
+                    response_log = response_log.replace(">\n<", "><")
+                value_log = {
+                    **value,
+                    "response": response_log,
+                }
+                logging.info(f"Message received for session_id {key}: {value_log}")
                 response_key = f"{key}:{value['mid']}"
                 value.pop("mid")
                 self.data[response_key] = value
@@ -83,7 +90,9 @@ class ChatbotResponses:
 ####################
 kafka = None
 customer_action_serialiser = None
-customer_profiles_and_logs = CustomerProfilesAndLogs(topics=[TOPIC_CUSTOMER_PROFILES, TOPIC_LOGGING])
+customer_profiles_and_logs = CustomerProfilesAndLogs(
+    topics=[TOPIC_CUSTOMER_PROFILES, TOPIC_LOGGING]
+)
 chatbot_responses = ChatbotResponses(topics=[TOPIC_CHATBOT_RESPONSES])
 
 # Restaurant name
@@ -152,7 +161,7 @@ def get_logs():
     logs_data = list()
     while not customer_profiles_and_logs.queue.empty():
         logs_data.append(customer_profiles_and_logs.queue.get())
-    return "<br>".join(logs_data)
+    return "".join(logs_data)
 
 
 @app.route("/login", methods=["POST"])
@@ -174,7 +183,9 @@ def do_login():
             session["waiter_name"] = fake.name()
             session["session_id"] = uuid.uuid4().hex
             session["restaurant_name"] = RESTAURANT_NAME
-            session["customer_name"] = customer_profiles_and_logs.data[username]["full_name"]
+            session["customer_name"] = customer_profiles_and_logs.data[username][
+                "full_name"
+            ]
             session["username"] = username
             login_user(
                 User(session["session_id"]),
@@ -216,7 +227,8 @@ def send_message():
         request_form = request.get_json()
         span_id = request_form.get("span_id")
         initial_message = request_form.get("initial_message")
-        customer_message = request_form.get("customer_message")
+        context = request_form.get("context")
+        query = request_form.get("query")
 
         result = {
             "waiter": "",
@@ -229,7 +241,8 @@ def send_message():
             mid = 0
         else:
             mid = int(time.time() * 1000)
-            message["message"] = customer_message
+            message["context"] = context
+            message["query"] = query
 
         message.update(
             {

@@ -71,7 +71,9 @@ class LoadRAG:
                         logging.info(f"Deleted customer profile for {key}")
                     else:
                         self.customer_profile[key] = value
-                        logging.info(f"Loaded customer profile for {key}: {json.dumps(value)}")
+                        logging.info(
+                            f"Loaded customer profile for {key}: {json.dumps(value)}"
+                        )
 
                 # Load supporting data (policies, restaurant, vector DB, etc.)
                 else:
@@ -81,7 +83,7 @@ class LoadRAG:
                     # Load Vector DB data
                     if rag_name in ["vector_db"]:
                         id = md5_int(key)
-                        
+
                         if value is None:  # drop from Vector DB by its ID
                             self.vdb_client.delete(
                                 collection_name=self.vdb_collection.name,
@@ -95,7 +97,9 @@ class LoadRAG:
                             embeddings = self.vdb_model.encode([sentence])
 
                             # Upsert collection
-                            logging.info(f"Upserting Vector DB collection {self.vdb_collection}: {id} | {sentence}")
+                            logging.info(
+                                f"Upserting Vector DB collection {self.vdb_collection}: {id} | {sentence}"
+                            )
                             self.vdb_client.upsert(
                                 collection_name=self.vdb_collection,
                                 points=[
@@ -104,7 +108,7 @@ class LoadRAG:
                                         vector=embeddings[0],
                                         payload={
                                             "title": key,
-                                            "description": value['description'],
+                                            "description": value["description"],
                                         },
                                     ),
                                 ],
@@ -239,7 +243,11 @@ if __name__ == "__main__":
                     if mid == 0:  # Initial message (after login)
 
                         # LLM Session
-                        chatVectorDB[session_id] = list()  # reset cache for that session (in case of page refresh)
+                        chatVectorDB[
+                            session_id
+                        ] = (
+                            list()
+                        )  # reset cache for that session (in case of page refresh)
 
                         if os.environ.get("LLM_ENGINE").lower() == "openai":
                             chatSessions[session_id] = ChatOpenAI(
@@ -270,23 +278,26 @@ if __name__ == "__main__":
                             logging.error(sys_exc(sys.exc_info()))
                             dob_string = f"was born in {customer_dob}"
                         finally:
-                            query = f"We have a new customer (name is {customer_name}, {dob_string}, allergic to {customer_allergies}). Greet they with a welcoming message"
+                            context += f"\nWe have a new customer (name is {customer_name}, {dob_string}, allergic to {customer_allergies}). Greet they with a welcoming message"
 
                         chatMessages[session_id] = [
                             SystemMessage(context),
-                            HumanMessage(query),
                         ]
 
                         logging.info(f"{username} has logged in!")
                         logging.info(f"Message ID: {mid}")
                         logging.info(f"Context: {context}")
-                        logging.info(f"Query: {query}")
 
                     else:  # new customer message
-                        query = value["message"] or ""
+                        context = value["context"] or ""
+                        query = value["query"] or ""
 
                         # Query Vector DB based on the customer message content
-                        vdb_context = list()
+                        if context:
+                            vdb_context = [context]
+                        else:
+                            vdb_context = list()
+
                         if query:
                             embeddings = VDB_MODEL.encode([query])
                             result_search = VDB_CLIENT.search(
@@ -296,9 +307,18 @@ if __name__ == "__main__":
                             )
                             for search in result_search:
                                 if search.score >= VECTOR_DB_MIN_SCORE:
-                                    if search.payload["title"] not in chatVectorDB[session_id]:
-                                        chatVectorDB[session_id].append(search.payload["title"])
-                                        vdb_context.append(f"{search.payload['title']}: {search.payload['description']}")
+                                    if (
+                                        search.payload["title"]
+                                        not in chatVectorDB[session_id]
+                                    ):
+                                        chatVectorDB[session_id].append(
+                                            search.payload["title"]
+                                        )
+                                        vdb_context.append(
+                                            f"{search.payload['title']}: {search.payload['description']}"
+                                        )
+
+                            logging.info(f"Customer query: {query}")
 
                         # In case of any relevant vector DB document is found, add it to the System context
                         if len(vdb_context) > 0:
@@ -308,8 +328,8 @@ if __name__ == "__main__":
                             logging.info(context)
                             chatMessages[session_id].append(SystemMessage(context))
 
-                        logging.info(f"Customer query: {query}")
-                        chatMessages[session_id].append(HumanMessage(query))
+                        if query:
+                            chatMessages[session_id].append(HumanMessage(query))
 
                     # Submit promt to LLM model and count tokens
                     with get_openai_callback() as cb:

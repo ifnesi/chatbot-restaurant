@@ -6,6 +6,7 @@ import base64
 import signal
 import hashlib
 import logging
+import regex as re
 
 from queue import Queue
 from bs4 import BeautifulSoup
@@ -44,11 +45,26 @@ class KafkaLogHandler(logging.StreamHandler):
         self,
         kafka,
         topic: str,
+        file_app: str,
     ) -> None:
+        """Log handler to submit python logs to Kafka"""
         super(KafkaLogHandler, self).__init__()
         self.string_serializer = StringSerializer("utf_8")
         self.kafka = kafka
         self.topic = topic
+        self.formatter = logging.Formatter(
+            f"[{file_app}] %(asctime)s.%(msecs)03d [%(levelname)s]: %(message)s"
+        )
+
+    def _append_handler(self) -> None:
+        self.kafka.create_topic(
+            self.topic,
+            cleanup_policy="delete",
+            sync=True,
+        )
+        self.setLevel(logging.INFO)
+        self.setFormatter(self.formatter)
+        logging.getLogger().addHandler(self)
 
     def emit(
         self,
@@ -56,12 +72,13 @@ class KafkaLogHandler(logging.StreamHandler):
     ) -> None:
         if self.kafka.producer_log:
             try:
-                self.kafka.producer_log.poll(0.0)
-                self.kafka.producer_log.produce(
-                    topic=self.topic,
-                    value=self.string_serializer(self.format(record)),
-                )
-                self.kafka.producer_log.flush()
+                if record:
+                    self.kafka.producer_log.poll(0.0)
+                    self.kafka.producer_log.produce(
+                        topic=self.topic,
+                        value=self.string_serializer(self.format(record)),
+                    )
+                    self.kafka.producer_log.flush()
             except Exception:
                 pass
             finally:
@@ -69,6 +86,8 @@ class KafkaLogHandler(logging.StreamHandler):
 
 
 class KafkaClient:
+    """Kafka Producer/Consumer instances with signal handler"""
+
     def __init__(
         self,
         config_file: str,
@@ -134,21 +153,13 @@ class KafkaClient:
             self._consumer_config_latest.update(dict(self._config["kafka"]))
             self.consumer_latest = Consumer(self._consumer_config_latest)
 
-        # Add Kafka log handler
-        self.create_topic(
-            TOPIC_LOGGING,
-            cleanup_policy="delete",
-            sync=True,
-        )
-        kafka_log_handler = KafkaLogHandler(
+        # Append Log Handlers (Kafka)
+        log_handler = KafkaLogHandler(
             self,
             TOPIC_LOGGING,
+            file_app,
         )
-        kafka_log_handler.setLevel(logging.INFO)
-        kafka_log_handler.setFormatter(
-            logging.Formatter(f"[{file_app}] %(asctime)s.%(msecs)03d [%(levelname)s]: %(message)s")
-        )
-        logging.getLogger().addHandler(kafka_log_handler)
+        log_handler._append_handler()
 
     def signal_handler(
         self,
@@ -313,6 +324,7 @@ class CustomerProfilesAndLogs:
         self.data = dict()
         self.queue = Queue()
         self.topics = topics
+        self._pattern = re.compile("^\[(.*?)\]")
 
     def consumer(self, kafka) -> None:
         while True:
@@ -324,14 +336,23 @@ class CustomerProfilesAndLogs:
                     self.data.pop(key, None)
                     logging.info(f"Deleted customer profile for {key}")
                 else:
-                    if topic == TOPIC_LOGGING:
+                    if topic == TOPIC_LOGGING:  # Add log data into the local queue
+
+                        file_app = self._pattern.findall(value)
+                        if len(file_app) > 0:
+                            file_app = file_app[0]
+                        else:
+                            file_app = ""
+
                         value = value.strip()
                         while "\n" in value:
                             value = value.replace("\n", "<br>")
-                        self.queue.put(f"{value}<br>")
+                        self.queue.put(f"<div class='log-{file_app}'>{value}</div>")
                     else:
                         self.data[key] = value
-                        logging.info(f"Loaded customer profile for {key}: {json.dumps(value)}")
+                        logging.info(
+                            f"Loaded customer profile for {key}: {json.dumps(value)}"
+                        )
 
 
 #############

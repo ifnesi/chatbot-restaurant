@@ -66,7 +66,42 @@ p {
   background-color: #e9ecef;
 }
 
-.logs {
+.logs, .logs div {
+  font-size: 14px;
+  font-family: monospace, 'Courier New';
+}
+
+.log-webapp, .logs thead th + tbody td + p + span + h1 + h2 + h3 + h4 + h5 + h6 {
+  color: black;
+  background-color: snow !important;
+  font-size: 14px;
+  font-family: monospace, 'Courier New';
+}
+
+.log-webapp {
+  margin: 6px;
+  padding: 2px;
+  border-radius: 3px;
+  font-size: 14px;
+  font-family: monospace, 'Courier New';
+}
+
+.log-admin_plane {
+  color: black;
+  background-color: rgb(255, 239, 149);
+  margin: 6px;
+  padding: 2px;
+  border-radius: 3px;
+  font-size: 14px;
+  font-family: monospace, 'Courier New';
+}
+
+.log-chatbot {
+  color: black;
+  background-color: rgb(202, 255, 149);
+  margin: 6px;
+  padding: 2px;
+  border-radius: 3px;
   font-size: 14px;
   font-family: monospace, 'Courier New';
 }

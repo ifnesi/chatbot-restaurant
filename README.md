@@ -13,10 +13,10 @@ If you prefer, you can opt to use OpenAI but it is a paid service.
 Qdrant, although has the [SaaS Cloud](https://qdrant.tech/documentation/cloud/) option this demo uses the local [in memory version](https://github.com/qdrant/qdrant-client) of it.
 
 ## Demo Diagram
-Overview:
+### Overview
 ![image](docs/demo_diagram.png)
 
-Detailed view:
+### Detailed view
 ![image](docs/demo_diagram_details.png)
 
 ## Requirements
@@ -139,25 +139,25 @@ To stop the demo, please run `./demo.sh -p`.
 ```
 
 ## Runtime Demo and Screenshots
-Demo
+### Demo
 ![image](docs/demo.gif)
 
-Login screen
+### Login screen
 ![image](docs/login.png)
 
-Customer Profiles available. To access that page go to http://localhost:8888/profiles (password is the same as the username)
+### Customer Profiles available. To access that page go to http://localhost:8888/profiles (password is the same as the username)
 ![image](docs/profiles.png)
 
-Initial message after login
+### Initial message after login
 ![image](docs/initial_message.png)
 
-Asking for the main menu
+### Asking for the main menu
 ![image](docs/main_menu.png)
 
-Going through some of the restaurant policies
+### Going through some of the restaurant policies
 ![image](docs/policies.png)
 
-System logs can be accessed through http://localhost:8888/logs. All applications are producing logs to Confluent Platform and the web application is consuming them, adding to a local queue and off-loading the queue once the logs page is opened (logs are refreshed at every 500ms)
+### System logs can be accessed through http://localhost:8888/logs. All applications are producing logs to Confluent Platform and the web application is consuming them, adding to a local queue and off-loading the queue once the logs page is opened (logs are refreshed at every 500ms)
 ![image](docs/logs.png)
 
 ## External References

@@ -157,6 +157,9 @@ Asking for the main menu
 Going through some of the restaurant policies
 ![image](docs/policies.png)
 
+System logs can be accessed through http://localhost:8888/logs. All applications are producing logs to Confluent Platform and the web application is consuming them, adding to a local queue and off-loading the queue once the logs page is opened (logs are refreshed at every 500ms)
+![image](docs/logs.png)
+
 ## External References
 Check out [Confluent's Developer portal](https://developer.confluent.io), it has free courses, documents, articles, blogs, podcasts and so many more content to get you up and running with a fully managed Apache Kafka service.
 

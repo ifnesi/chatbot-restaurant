@@ -145,7 +145,8 @@ To stop the demo, please run `./demo.sh -p`.
 ### Login screen
 ![image](docs/login.png)
 
-### Customer Profiles available. To access that page go to http://localhost:8888/profiles (password is the same as the username)
+### Customer Profiles
+To access that page go to http://localhost:8888/profiles (password is the same as the username)
 ![image](docs/profiles.png)
 
 ### Initial message after login
@@ -157,7 +158,8 @@ To stop the demo, please run `./demo.sh -p`.
 ### Going through some of the restaurant policies
 ![image](docs/policies.png)
 
-### System logs can be accessed through http://localhost:8888/logs. All applications are producing logs to Confluent Platform and the web application is consuming them, adding to a local queue and off-loading the queue once the logs page is opened (logs are refreshed at every 500ms)
+### System logs
+They can be accessed through http://localhost:8888/logs. All applications are producing logs to Confluent Platform and the web application is consuming them, adding to a local queue and off-loading the queue once the logs page is opened (logs are refreshed at every 500ms)
 ![image](docs/logs.png)
 
 ## External References

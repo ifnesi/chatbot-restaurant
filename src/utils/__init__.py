@@ -390,7 +390,7 @@ def initial_prompt(
         result = ""
         for n, section in enumerate(sections):
             result += f"- {ord}.{n+1} {section}:\n"
-            for m, data in enumerate(rag_data[section].values()):
+            for m, data in enumerate(rag_data.get(section, dict()).values()):
                 result += (
                     f"  - {ord}.{n+1}.{m+1} {data['name']} ({data['description']}): "
                 )
@@ -403,17 +403,17 @@ def initial_prompt(
 
     result = f"You are an AI Assistant for a restaurant. Your name is: {waiter_name}.\n"
     result += "1. You MUST comply with these AI rules:\n"
-    for key, value in rag_data["ai_rules"].items():
+    for key, value in rag_data.get("ai_rules", dict()).items():
         result += f"- {key}: {value}\n"
     result += "2. Details about the restaurant you work for:\n"
-    for key, value in rag_data["restaurant"].items():
+    for key, value in rag_data.get("restaurant", dict()).items():
         result += f"- {key}: {value}\n"
     result += "3. Restaurant policies:\n"
-    for key, value in rag_data["policies"].items():
+    for key, value in rag_data.get("policies", dict()).items():
         result += f"- {key}: {value}\n"
     result += "4. Main menu:\n"
     result += get_menu(
-        rag_data["menu"],
+        rag_data.get("menu", dict()),
         [
             "starters",
             "mains",
@@ -426,7 +426,7 @@ def initial_prompt(
     )
     result += f"5. Kids menu:\n"
     result += get_menu(
-        rag_data["kidsmenu"],
+        rag_data.get("kidsmenu", dict()),
         [
             "starters",
             "mains",

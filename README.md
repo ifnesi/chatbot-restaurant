@@ -25,7 +25,7 @@ Qdrant, although has the [SaaS Cloud](https://qdrant.tech/documentation/cloud/) 
 - [Python 3.8+](https://www.python.org/)
 
 ## The Demo
-This demo runs all on Docker and it was only tested on a MAC M1. In case needed change the platform option to your needs (see variable `PLATFORM` on the file `.env`).
+This demo runs all on Docker and it was only tested on a MAC M1. In case needed change the platform option to your needs (see variable `PLATFORM` on the file `.env`). For example, if you have a macOS you need to set the environmental variable `PLATFORM` to `linux/amd64`.
 
 To be able to interact with OpenAI or Groq LLM model, you will need the following API key:
 * [GroqCloud](https://console.groq.com) free LLM engine

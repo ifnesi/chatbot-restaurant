@@ -1,0 +1,14 @@
+{% extends 'header.html' %}
+
+{% block header %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="text-light">
+        {% autoescape false %}
+        {{ data }}
+        {% endautoescape %}
+    </div>
+</div>
+{% endblock %}

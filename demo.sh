@@ -62,12 +62,14 @@ if [ ! -f $ENV_VAR_FILE ]; then
     echo "CONFLUENT_PLATFORM_VERSION=\"7.6.0\""
     echo "PLATFORM=\"linux/arm64\""
     echo "HOST=\"localhost\""
+    echo "CONFLUENT_POSTGRES_CDC_VERSION=\"2.5.4\""
+    echo "POSTGRESQL_VERSION=\"14\""
     echo "# Configuration files"
-    echo "KAFKA_CONFIG=\"config/localhost.ini\""
-    echo "# Admin Plane"
-    echo "DATA_LOADER=\"config/default_loader.dat\""
-    echo "PASSWORD_SALT=\"<Any_string_here>\"            # String to be used to salt hash passwords"
-    echo "CLIENT_ID_ADMIN_PLANE=\"chatbot-admin-plane-producer\""
+    echo "KAFKA_CONFIG=\"config/docker_host.ini\""
+    echo "# DB Provisioning"
+    echo "FLAG_FILE=\".db_provisioning.flag\""
+    echo "MD5_PASSWORD_SALT=\"<MD5_string_here>\"               # String to be used to salt hash passwords"
+    echo "CLIENT_DB_PROVISIONING=\"chatbot-db_provisioning-producer\""
     echo "# Web App (Chatbot front-end)"
     echo "WEBAPP_HOST=\"0.0.0.0\""
     echo "WEBAPP_PORT=8888"
@@ -75,10 +77,12 @@ if [ ! -f $ENV_VAR_FILE ]; then
     echo "TIMEOUT_SECONDS=120"
     echo "# Chatbot back-end"
     echo "CLIENT_ID_CHATBOT=\"chatbot-app\""
-    echo "LLM_ENGINE=\"openai\"                          # Options: openai (paid), groq (free)"
-    echo "OPENAI_API_KEY=\"<Your_OpenAI_API_Key_Here>\"  # Required if LLM_ENGINE=openai (Get the API Key here: https://platform.openai.com/docs/quickstart/account-setup)"
-    echo "GROQ_API_KEY=\"<Your_GroqCloud_API_Key_Here>\" # Required if LLM_ENGINE=groq (Get the API Key here: https://console.groq.com)"
-    echo "BASE_MODEL=\"gpt-3.5-turbo-0125\"              # Options: gpt-3.5-turbo-0125 (if LLM_ENGINE=openai), mixtral-8x7b-32768 (if LLM_ENGINE=groq)"
+    echo "LLM_ENGINE=\"openai\"                             # Options: openai (paid), groq (free), bedrock (AWS: paid)"
+    echo "AWS_API_KEY=\"<access_key>:<secret_access_key>\" # Required if LLM_ENGINE=bedrock (format: <access_key>:<secret_access_key>)"
+    echo "AWS_REGION=\"<aws_region>\"                       # Required if LLM_ENGINE=bedrock"
+    echo "OPENAI_API_KEY=\"<Your_OpenAI_API_Key_Here>\"     # Required if LLM_ENGINE=openai (Get the API Key here: https://platform.openai.com/docs/quickstart/account-setup)"
+    echo "GROQ_API_KEY=\"<Your_GroqCloud_API_Key_Here>\"    # Required if LLM_ENGINE=groq (Get the API Key here: https://console.groq.com)"
+    echo "BASE_MODEL=\"gpt-3.5-turbo-0125\"                 # Any valid model, example: gpt-3.5-turbo-0125 (if LLM_ENGINE=openai), mixtral-8x7b-32768 (if LLM_ENGINE=groq), amazon.titan-text-express-v1 or amazon.titan-text-premier-v1:0 (if LLM_ENGINE=bedrock)"
     echo "MODEL_TEMPERATURE=0.3"
     echo "VECTOR_DB_MIN_SCORE=0.3"
     echo "VECTOR_DB_SEARCH_LIMIT=2"
@@ -99,6 +103,13 @@ echo ""
 # Waiting services to be ready
 logging "Waiting Schema Registry to be ready" "INFO" -n
 while [[ "$(curl -s -o /dev/null -w ''%{http_code}'' http://$HOST:8081)" != "200" ]]
+do
+    echo -n "."
+    sleep 1
+done
+
+logging "Waiting Connect cluster to be ready" "INFO" -n
+while [[ "$(curl -s -o /dev/null -w ''%{http_code}'' http://$HOST:8083)" != "200" ]]
 do
     echo -n "."
     sleep 1

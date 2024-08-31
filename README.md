@@ -1,7 +1,7 @@
 ![image](docs/logo.png)
 
 # chatbot-restaurant
-Chatbot for a restaurant using [Confluent](https://www.confluent.io/lp/confluent-kafka), [OpenAI](https://openai.com/), [GroqCloud](https://console.groq.com) and [Qdrant](https://qdrant.tech/).
+Chatbot for a restaurant using [Confluent](https://www.confluent.io/lp/confluent-kafka), [AWS BedRock](https://aws.amazon.com/bedrock), [OpenAI](https://openai.com/), [GroqCloud](https://console.groq.com) and [Qdrant](https://qdrant.tech/).
 
 As GroqCloud is free to use the current LLM model used (`mixtral-8x7b-32768`) has the following limitations:
 - Requests per minute: 30
@@ -27,9 +27,14 @@ Qdrant, although has the [SaaS Cloud](https://qdrant.tech/documentation/cloud/) 
 ## The Demo
 This demo runs all on Docker and it was only tested on a MAC M1. In case needed change the platform option to your needs (see variable `PLATFORM` on the file `.env`). For example, if you have a macOS you need to set the environmental variable `PLATFORM` to `linux/amd64`.
 
-To be able to interact with OpenAI or Groq LLM model, you will need the following API key:
+To be able to interact with AWS BedRock, OpenAI or Groq LLM model, you will need the following API key:
+* [AWS BedRock](https://aws.amazon.com/bedrock) paid LLM engine
 * [GroqCloud](https://console.groq.com) free LLM engine
 * [OpenAI](https://platform.openai.com/docs/quickstart/account-setup) paid LLM engine
+
+**Important** If using AWS BedRock make sure to:
+ - Enable access to the LLM model of your preference (e.g. `Titan Text G1 - Premier` (https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html)) for the AWS Region of your choice
+ - Set the right permission to AmazonBedRock when creating the Security Credentials for your IAM user
 
 Having the API key at hand, create a file named `.env` file by executing the command:
 ```bash
@@ -38,12 +43,14 @@ cat > .env <<EOF
 CONFLUENT_PLATFORM_VERSION="7.6.0"
 PLATFORM="linux/arm64"
 HOST="localhost"
+CONFLUENT_POSTGRES_CDC_VERSION="2.5.4"
+POSTGRESQL_VERSION="14"
 # Configuration files
-KAFKA_CONFIG="config/localhost.ini"
-# Admin Plane
-DATA_LOADER="config/default_loader.dat"
-PASSWORD_SALT="<Any_string_here>"            # String to be used to salt hash passwords
-CLIENT_ID_ADMIN_PLANE="chatbot-admin-plane-producer"
+KAFKA_CONFIG="config/docker_host.ini"
+# DB Provisioning
+FLAG_FILE=".db_provisioning.flag"
+MD5_PASSWORD_SALT="<MD5_string_here>"            # String to be used to salt hash passwords
+CLIENT_DB_PROVISIONING="chatbot-db_provisioning-producer"
 # Web App (Chatbot front-end)
 WEBAPP_HOST="0.0.0.0"
 WEBAPP_PORT=8888
@@ -51,10 +58,12 @@ CLIENT_ID_WEBAPP="chatbot-webapp"
 TIMEOUT_SECONDS=120
 # Chatbot back-end
 CLIENT_ID_CHATBOT="chatbot-app"
-LLM_ENGINE="openai"                          # Options: openai (paid), groq (free)
-OPENAI_API_KEY="<Your_OpenAI_API_Key_Here>"  # Required if LLM_ENGINE=openai (Get the API Key here: https://platform.openai.com/docs/quickstart/account-setup)
-GROQ_API_KEY="<Your_GroqCloud_API_Key_Here>" # Required if LLM_ENGINE=groq (Get the API Key here: https://console.groq.com)
-BASE_MODEL="gpt-3.5-turbo-0125"              # Options: gpt-3.5-turbo-0125 (if LLM_ENGINE=openai), mixtral-8x7b-32768 (if LLM_ENGINE=groq)
+LLM_ENGINE="openai"                             # Options: openai (paid), groq (free), bedrock (AWS: paid)
+AWS_API_KEY=" <access_key>:<secret_access_key>" # Required if LLM_ENGINE=bedrock (format: <access_key>:<secret_access_key>)
+AWS_REGION="<aws_region>"                       # Required if LLM_ENGINE=bedrock
+OPENAI_API_KEY="<Your_OpenAI_API_Key_Here>"     # Required if LLM_ENGINE=openai (Get the API Key here: https://platform.openai.com/docs/quickstart/account-setup)
+GROQ_API_KEY="<Your_GroqCloud_API_Key_Here>"    # Required if LLM_ENGINE=groq (Get the API Key here: https://console.groq.com)
+BASE_MODEL="gpt-3.5-turbo-0125"                 # Options: gpt-3.5-turbo-0125 (if LLM_ENGINE=openai), mixtral-8x7b-32768 (if LLM_ENGINE=groq), amazon.titan-text-express-v1 or amazon.titan-text-premier-v1:0 (if LLM_ENGINE=bedrock)
 MODEL_TEMPERATURE=0.3
 VECTOR_DB_MIN_SCORE=0.3
 VECTOR_DB_SEARCH_LIMIT=2
@@ -157,7 +166,7 @@ In parallel to that the chatbot back-end microservices (python script `chatbot.p
    - Load in memory the Customer Profiles, AI Rules, Restaurant Policies, Restaurant Information, Main Menu and Kids Menu (as consumed from the corresponding topics)
    - Run a Qdrant vector search engine in memory, create a local collection (`chatbot_restaurant`), generate the embeddings (using sentence transformer `all-MiniLM-L6-v2`) and load add Vector DB data (as consumed from the corresponding topic) into it
  - Thread #2:
-   - Consume the customer messages from topic `chatbot-restaurant-customer_actions` and post it to the LLM engine (as set on the environment variable `LLM_ENGINE`). It uses LangChain to be able to seemlesly interact with OpenAI and GroqCloud. All messages are buffered in memory per user session and cleared after logout. This can be optmised in order to reduce the number of tokens passed everything to the LLM engine
+   - Consume the customer messages from topic `chatbot-restaurant-customer_actions` and post it to the LLM engine (as set on the environment variable `LLM_ENGINE`). It uses LangChain to be able to seemlesly interact with AWS BedRock, OpenAI or GroqCloud. All messages are buffered in memory per user session and cleared after logout. This can be optmised in order to reduce the number of tokens passed everything to the LLM engine
    - The initial LLM prompt will contain the name of the waiter/AI assistant, name/age of the customer as well as all AI Rules, Restaurant Policies, Restaurant Information, Main Menu and Kids Menu, for example:
 ```
 Context: You are an AI Assistant for a restaurant. Your name is: Steven Mayo.
@@ -250,6 +259,33 @@ The last python script is the web application (`webapp.py`):
  - It will also consume the messages from the topic `chatbot-restaurant-chatbot_responses` matching the sessionID with the messageID (mid), then presenting it to the corresponding customer
 
 All three python scripts have two logging handles, one to the console and another one to the Kafka topic `chatbot-restaurant-logs`. The Web Application will consume all messages in that topic so it can be rendered when accessing http://localhost:8888/logs.
+
+#### Changing the Vector DB on the fly
+By default the Vector DB will be loaded with several document (see `src/rag/vector_db.json` for details), two of them in particular are:
+```json
+{
+    "pets": "Pets are not allowed, except service animals",
+    "smoking": "Smoking only permitted in designated outdoor areas"
+}
+```
+
+What we can do is to change these policies, to (see `src/rag/vector_db_changes.json` for details):
+```json
+{
+    "pets": "We welcome your furry friends! Pets are allowed, including service animals",
+    "smoking": "Feel free to smoke in any area that you find comfortable"
+}
+```
+
+To do that, proceed as follows:
+```shell
+docker exec -ti chatbot /bin/bash
+sed -i 's/default_loader/vector_db_changes/g' .env
+python admin_plane.py
+exit
+```
+
+To see the changes in action, login to the Chatbot with a different user, or log out and log back in.
 
 ### Stopping the demo
 To stop the demo, please run `./demo.sh -p`.

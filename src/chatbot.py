@@ -75,105 +75,108 @@ class LoadRAG:
                 kafka.consumer_earliest,
                 self.topics,
             ):
-                if isinstance(value, dict):
-                    payload_op, payload_key, payload_value = get_key_value(value)
+                try:
+                    if isinstance(value, dict):
+                        payload_op, payload_key, payload_value = get_key_value(value)
 
-                    # Load Customer Profiles
-                    if topic == TOPIC_DB_CUSTOMER_PROFILES:
-                        if payload_key not in self.customer_profile:
-                            self.customer_profile[payload_key] = dict()
+                        # Load Customer Profiles
+                        if topic == TOPIC_DB_CUSTOMER_PROFILES:
+                            if payload_key not in self.customer_profile:
+                                self.customer_profile[payload_key] = dict()
 
-                        if payload_op == "d":
-                            self.customer_profile.pop(payload_key, None)
-                            logging.info(f"Deleted customer profile for {payload_key}")
-                        else:
-                            payload_value["dob"] = time.strftime(
-                                "%Y/%m/%d",
-                                time.localtime(payload_value["dob"] * 60 * 60 * 24),
+                            if payload_op == "d":
+                                self.customer_profile.pop(payload_key, None)
+                                logging.info(f"Deleted customer profile for {payload_key}")
+                            else:
+                                payload_value["dob"] = time.strftime(
+                                    "%Y/%m/%d",
+                                    time.localtime(payload_value["dob"] * 60 * 60 * 24),
+                                )
+                                self.customer_profile[payload_key] = payload_value
+                                logging.info(
+                                    f"Loaded customer profile for {payload_key}: {json.dumps(payload_value)}"
+                                )
+
+                        # Main and Kids menu
+                        elif topic in [TOPIC_DB_MAIN_MENU, TOPIC_DB_KIDS_MENU]:
+                            menu_type = (
+                                "menu" if topic == TOPIC_DB_MAIN_MENU else "kidsmenu"
                             )
-                            self.customer_profile[payload_key] = payload_value
-                            logging.info(
-                                f"Loaded customer profile for {payload_key}: {json.dumps(payload_value)}"
-                            )
+                            if menu_type not in self.rag:
+                                self.rag[menu_type] = dict()
+                            if payload_key not in self.rag[menu_type]:
+                                self.rag[menu_type][payload_key] = dict()
 
-                    # Main and Kids menu
-                    elif topic in [TOPIC_DB_MAIN_MENU, TOPIC_DB_KIDS_MENU]:
-                        menu_type = (
-                            "menu" if topic == TOPIC_DB_MAIN_MENU else "kidsmenu"
-                        )
-                        if menu_type not in self.rag:
-                            self.rag[menu_type] = dict()
-                        if payload_key not in self.rag[menu_type]:
-                            self.rag[menu_type][payload_key] = dict()
+                            if payload_op == "d":
+                                self.rag[menu_type].pop(payload_key, None)
+                                logging.info(f"Deleted {menu_type} for {payload_key}")
+                            else:
+                                self.rag[menu_type][payload_key] = payload_value
+                                logging.info(
+                                    f"Upserted {menu_type} for {payload_key}: {json.dumps(payload_value)}"
+                                )
 
-                        if payload_op == "d":
-                            self.rag[menu_type].pop(payload_key, None)
-                            logging.info(f"Deleted {menu_type} for {payload_key}")
-                        else:
-                            self.rag[menu_type][payload_key] = payload_value
-                            logging.info(
-                                f"Upserted {menu_type} for {payload_key}: {json.dumps(payload_value)}"
-                            )
+                        # Vector DB
+                        elif topic == TOPIC_DB_EXTRAS:
+                            id = md5_int(payload_key)
 
-                    # Vector DB
-                    elif topic == TOPIC_DB_EXTRAS:
-                        id = md5_int(payload_key)
-
-                        if payload_op == "d":
-                            self.vdb_client.delete(
-                                collection_name=self.vdb_collection,
-                                points_selector=models.PointIdsList(
-                                    points=[id],
-                                ),
-                            )
-                            logging.info(
-                                f"Deleted Vector DB collection {self.vdb_collection}: {id} | {payload_key}"
-                            )
-
-                        else:
-                            sentence = f"{payload_key}: {payload_value['description']}"
-                            embeddings = self.vdb_model.encode([sentence])
-                            # Upsert collection
-                            logging.info(
-                                f"Upserting Vector DB collection {self.vdb_collection}: {id} | {sentence}"
-                            )
-                            self.vdb_client.upsert(
-                                collection_name=self.vdb_collection,
-                                points=[
-                                    models.PointStruct(
-                                        id=id,
-                                        vector=embeddings[0],
-                                        payload={
-                                            "title": payload_key,
-                                            "description": payload_value["description"],
-                                        },
+                            if payload_op == "d":
+                                self.vdb_client.delete(
+                                    collection_name=self.vdb_collection,
+                                    points_selector=models.PointIdsList(
+                                        points=[id],
                                     ),
-                                ],
-                            )
+                                )
+                                logging.info(
+                                    f"Deleted Vector DB collection {self.vdb_collection}: {id} | {payload_key}"
+                                )
 
-                    # Load additional data (policies, restaurant, ai rules)
-                    else:
-                        if topic == TOPIC_DB_AI_RULES:
-                            rag_name = "ai_rules"
-                        elif topic == TOPIC_DB_POLICIES:
-                            rag_name = "policies"
+                            else:
+                                sentence = f"{payload_key}: {payload_value['description']}"
+                                embeddings = self.vdb_model.encode([sentence])
+                                # Upsert collection
+                                logging.info(
+                                    f"Upserting Vector DB collection {self.vdb_collection}: {id} | {sentence}"
+                                )
+                                self.vdb_client.upsert(
+                                    collection_name=self.vdb_collection,
+                                    points=[
+                                        models.PointStruct(
+                                            id=id,
+                                            vector=embeddings[0],
+                                            payload={
+                                                "title": payload_key,
+                                                "description": payload_value["description"],
+                                            },
+                                        ),
+                                    ],
+                                )
+
+                        # Load additional data (policies, restaurant, ai rules)
                         else:
-                            rag_name = "restaurant"
+                            if topic == TOPIC_DB_AI_RULES:
+                                rag_name = "ai_rules"
+                            elif topic == TOPIC_DB_POLICIES:
+                                rag_name = "policies"
+                            else:
+                                rag_name = "restaurant"
 
-                        if rag_name not in self.rag:
-                            self.rag[rag_name] = dict()
-                        if payload_key not in self.rag[rag_name]:
-                            self.rag[rag_name][payload_key] = dict()
+                            if rag_name not in self.rag:
+                                self.rag[rag_name] = dict()
+                            if payload_key not in self.rag[rag_name]:
+                                self.rag[rag_name][payload_key] = dict()
 
-                        if payload_op == "d":
-                            self.rag[rag_name].pop(payload_key, None)
-                            logging.info(f"Deleted {rag_name} for {payload_key}")
-                        else:
-                            payload_value = payload_value["description"]
-                            self.rag[rag_name][payload_key] = payload_value
-                            logging.info(
-                                f"Loaded {rag_name} for {payload_key}: {payload_value}"
-                            )
+                            if payload_op == "d":
+                                self.rag[rag_name].pop(payload_key, None)
+                                logging.info(f"Deleted {rag_name} for {payload_key}")
+                            else:
+                                payload_value = payload_value["description"]
+                                self.rag[rag_name][payload_key] = payload_value
+                                logging.info(
+                                    f"Loaded {rag_name} for {payload_key}: {payload_value}"
+                                )
+                except Exception:
+                    logging.error(sys_exc(sys.exc_info()))
 
 
 ########

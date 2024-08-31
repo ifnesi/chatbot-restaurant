@@ -45,7 +45,8 @@ main > .container {
   padding-bottom: 6px;
   padding-left: 12px;
   padding-right: 12px;
-  font-size: 18px;
+  font-size: 15px;
+  font-family: monospace;
 }
 
 .chatbot {
@@ -86,7 +87,7 @@ p {
   font-family: monospace, 'Courier New';
 }
 
-.log-admin_plane {
+.log-db_provisioning {
   color: black;
   background-color: rgb(255, 239, 149);
   margin: 6px;

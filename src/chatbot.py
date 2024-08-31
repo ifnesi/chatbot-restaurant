@@ -1,13 +1,16 @@
 import os
 import sys
 import json
+import time
+import boto3
 import logging
 
 from dotenv import load_dotenv, find_dotenv
 from threading import Thread
+from langchain_aws import ChatBedrock
 from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
-from langchain.schema import SystemMessage, HumanMessage
+from langchain.schema import SystemMessage, HumanMessage, AIMessage
 from langchain_community.callbacks.manager import get_openai_callback
 
 from qdrant_client import QdrantClient
@@ -15,17 +18,25 @@ from qdrant_client.http import models
 from sentence_transformers import SentenceTransformer
 
 from utils import (
-    TOPIC_RAG,
+    TOPIC_DB,
     TOPIC_CUSTOMER_ACTIONS,
     TOPIC_CHATBOT_RESPONSES,
-    TOPIC_CUSTOMER_PROFILES,
+    TOPIC_DB_CUSTOMER_PROFILES,
+    TOPIC_DB_MAIN_MENU,
+    TOPIC_DB_KIDS_MENU,
+    TOPIC_DB_EXTRAS,
+    TOPIC_DB_AI_RULES,
+    TOPIC_DB_POLICIES,
     KafkaClient,
     SerializationContext,
     MessageField,
     md5_int,
     sys_exc,
+    set_flag,
+    unset_flag,
     adjust_html,
     calculate_age,
+    get_key_value,
     initial_prompt,
 )
 
@@ -60,42 +71,68 @@ class LoadRAG:
 
     def consumer(self, kafka) -> None:
         while True:
-            for topic, headers, key, value in kafka.avro_string_consumer(
+            for topic, _, _, value in kafka.avro_string_consumer(
                 kafka.consumer_earliest,
                 self.topics,
             ):
-                # Load Customer Profiles
-                if topic == TOPIC_CUSTOMER_PROFILES:
-                    if value is None:
-                        self.customer_profile.pop(key, None)
-                        logging.info(f"Deleted customer profile for {key}")
-                    else:
-                        self.customer_profile[key] = value
-                        logging.info(
-                            f"Loaded customer profile for {key}: {json.dumps(value)}"
+                if isinstance(value, dict):
+                    payload_op, payload_key, payload_value = get_key_value(value)
+
+                    # Load Customer Profiles
+                    if topic == TOPIC_DB_CUSTOMER_PROFILES:
+                        if payload_key not in self.customer_profile:
+                            self.customer_profile[payload_key] = dict()
+
+                        if payload_op == "d":
+                            self.customer_profile.pop(payload_key, None)
+                            logging.info(f"Deleted customer profile for {payload_key}")
+                        else:
+                            payload_value["dob"] = time.strftime(
+                                "%Y/%m/%d",
+                                time.localtime(payload_value["dob"] * 60 * 60 * 24),
+                            )
+                            self.customer_profile[payload_key] = payload_value
+                            logging.info(
+                                f"Loaded customer profile for {payload_key}: {json.dumps(payload_value)}"
+                            )
+
+                    # Main and Kids menu
+                    elif topic in [TOPIC_DB_MAIN_MENU, TOPIC_DB_KIDS_MENU]:
+                        menu_type = (
+                            "menu" if topic == TOPIC_DB_MAIN_MENU else "kidsmenu"
                         )
+                        if menu_type not in self.rag:
+                            self.rag[menu_type] = dict()
+                        if payload_key not in self.rag[menu_type]:
+                            self.rag[menu_type][payload_key] = dict()
 
-                # Load supporting data (policies, restaurant, vector DB, etc.)
-                else:
-                    rag_name = topic.split("-")[-1]
-                    prefix, *suffix = rag_name.split("_")
+                        if payload_op == "d":
+                            self.rag[menu_type].pop(payload_key, None)
+                            logging.info(f"Deleted {menu_type} for {payload_key}")
+                        else:
+                            self.rag[menu_type][payload_key] = payload_value
+                            logging.info(
+                                f"Upserted {menu_type} for {payload_key}: {json.dumps(payload_value)}"
+                            )
 
-                    # Load Vector DB data
-                    if rag_name in ["vector_db"]:
-                        id = md5_int(key)
+                    # Vector DB
+                    elif topic == TOPIC_DB_EXTRAS:
+                        id = md5_int(payload_key)
 
-                        if value is None:  # drop from Vector DB by its ID
+                        if payload_op == "d":
                             self.vdb_client.delete(
-                                collection_name=self.vdb_collection.name,
+                                collection_name=self.vdb_collection,
                                 points_selector=models.PointIdsList(
                                     points=[id],
                                 ),
                             )
+                            logging.info(
+                                f"Deleted Vector DB collection {self.vdb_collection}: {id} | {payload_key}"
+                            )
 
                         else:
-                            sentence = f"{key}: {value['description']}"
+                            sentence = f"{payload_key}: {payload_value['description']}"
                             embeddings = self.vdb_model.encode([sentence])
-
                             # Upsert collection
                             logging.info(
                                 f"Upserting Vector DB collection {self.vdb_collection}: {id} | {sentence}"
@@ -107,46 +144,49 @@ class LoadRAG:
                                         id=id,
                                         vector=embeddings[0],
                                         payload={
-                                            "title": key,
-                                            "description": value["description"],
+                                            "title": payload_key,
+                                            "description": payload_value["description"],
                                         },
                                     ),
                                 ],
                             )
 
-                    # Main and Kids menu
-                    elif prefix in ["menu", "kidsmenu"]:
-                        suffix = "_".join(suffix)
-                        if prefix not in self.rag.keys():
-                            self.rag[prefix] = dict()
-                        if suffix not in self.rag[prefix].keys():
-                            self.rag[prefix][suffix] = dict()
-
-                        if value is None:  # drop from RAG
-                            self.rag[prefix][suffix].pop(key, None)
-                        else:
-                            self.rag[prefix][suffix][key] = value
-
-                    # Policies, Restaurant and AI Rules
+                    # Load additional data (policies, restaurant, ai rules)
                     else:
-                        if rag_name not in self.rag.keys():
+                        if topic == TOPIC_DB_AI_RULES:
+                            rag_name = "ai_rules"
+                        elif topic == TOPIC_DB_POLICIES:
+                            rag_name = "policies"
+                        else:
+                            rag_name = "restaurant"
+
+                        if rag_name not in self.rag:
                             self.rag[rag_name] = dict()
+                        if payload_key not in self.rag[rag_name]:
+                            self.rag[rag_name][payload_key] = dict()
 
-                        if value is None:  # drop from RAG
-                            self.rag[rag_name].pop(key, None)
+                        if payload_op == "d":
+                            self.rag[rag_name].pop(payload_key, None)
+                            logging.info(f"Deleted {rag_name} for {payload_key}")
                         else:
-                            self.rag[rag_name][key] = value["description"]
-
-                    if value is None:
-                        logging.info(f"Deleted data {rag_name} for {key}")
-                    else:
-                        logging.info(f"Loaded data {rag_name}: {json.dumps(value)}")
+                            payload_value = payload_value["description"]
+                            self.rag[rag_name][payload_key] = payload_value
+                            logging.info(
+                                f"Loaded {rag_name} for {payload_key}: {payload_value}"
+                            )
 
 
 ########
 # Main #
 ########
 if __name__ == "__main__":
+    # Load env variables
+    load_dotenv(find_dotenv())
+    env_vars = dict(os.environ)
+
+    FLAG_FILE = env_vars.get("FLAG_FILE")
+    unset_flag(FLAG_FILE)
+
     FILE_APP = os.path.splitext(os.path.split(__file__)[-1])[0]
     logging.basicConfig(
         format=f"[{FILE_APP}] %(asctime)s.%(msecs)03d [%(levelname)s]: %(message)s",
@@ -154,19 +194,16 @@ if __name__ == "__main__":
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    # Load env variables
-    load_dotenv(find_dotenv())
-
     kafka = KafkaClient(
-        os.environ.get("KAFKA_CONFIG"),
-        os.environ.get("CLIENT_ID_CHATBOT"),
+        env_vars.get("KAFKA_CONFIG"),
+        env_vars.get("CLIENT_ID_CHATBOT"),
         FILE_APP,
         set_consumer_latest=True,
         set_consumer_earliest=True,
     )
 
-    VECTOR_DB_MIN_SCORE = float(os.environ.get("VECTOR_DB_MIN_SCORE", 0.3))
-    VECTOR_DB_SEARCH_LIMIT = int(os.environ.get("VECTOR_DB_SEARCH_LIMIT", 2))
+    VECTOR_DB_MIN_SCORE = float(env_vars.get("VECTOR_DB_MIN_SCORE", 0.3))
+    VECTOR_DB_SEARCH_LIMIT = int(env_vars.get("VECTOR_DB_SEARCH_LIMIT", 2))
 
     # Vector DB Collection
     VDB_COLLECTION = "chatbot_restaurant"
@@ -190,11 +227,13 @@ if __name__ == "__main__":
         ),
     )
 
+    # Set flag here to allow time to load sentence transformer and create Vector DB collection
+    set_flag(FLAG_FILE)
+
     # Class instance to load RAG data
     rag = LoadRAG(
         topics=[
-            TOPIC_CUSTOMER_PROFILES,
-            TOPIC_RAG,
+            TOPIC_DB,
         ],
         vdb_client=VDB_CLIENT,
         vdb_model=VDB_MODEL,
@@ -211,6 +250,19 @@ if __name__ == "__main__":
     with open(os.path.join("schemas", "chatbot_response.avro"), "r") as f:
         schema_str = f.read()
     avro_serializer = kafka.avro_serialiser(schema_str)
+
+    llm_engine = env_vars.get("LLM_ENGINE").lower()
+    if llm_engine == "bedrock":
+        # Start AWS session
+        AWS_SERVER_PUBLIC_KEY, *AWS_SERVER_SECRET_KEY = env_vars.get(
+            "AWS_API_KEY"
+        ).split(":")
+        aws_client = boto3.client(
+            "bedrock-runtime",
+            aws_access_key_id=AWS_SERVER_PUBLIC_KEY,
+            aws_secret_access_key=":".join(AWS_SERVER_SECRET_KEY),
+            region_name=env_vars.get("AWS_REGION"),
+        )
 
     # Process messages submitted by the customers (Kafka consumer #2)
     while True:
@@ -249,18 +301,29 @@ if __name__ == "__main__":
                             list()
                         )  # reset cache for that session (in case of page refresh)
 
-                        if os.environ.get("LLM_ENGINE").lower() == "openai":
+                        if llm_engine == "bedrock":
+                            chatSessions[session_id] = ChatBedrock(
+                                model_id=env_vars.get("BASE_MODEL"),
+                                client=aws_client,
+                                model_kwargs={
+                                    "temperature": float(
+                                        env_vars.get("MODEL_TEMPERATURE")
+                                    ),
+                                },
+                            )
+
+                        elif llm_engine == "openai":
                             chatSessions[session_id] = ChatOpenAI(
-                                api_key=os.environ.get("OPENAI_API_KEY"),
-                                model=os.environ.get("BASE_MODEL"),
-                                temperature=float(os.environ.get("MODEL_TEMPERATURE")),
+                                api_key=env_vars.get("OPENAI_API_KEY"),
+                                model=env_vars.get("BASE_MODEL"),
+                                temperature=float(env_vars.get("MODEL_TEMPERATURE")),
                             )
 
                         else:
                             chatSessions[session_id] = ChatGroq(
-                                groq_api_key=os.environ.get("GROQ_API_KEY"),
-                                model_name=os.environ.get("BASE_MODEL"),
-                                temperature=float(os.environ.get("MODEL_TEMPERATURE")),
+                                groq_api_key=env_vars.get("GROQ_API_KEY"),
+                                model_name=env_vars.get("BASE_MODEL"),
+                                temperature=float(env_vars.get("MODEL_TEMPERATURE")),
                             )
 
                         waiter_name = value["waiter_name"]
@@ -278,15 +341,17 @@ if __name__ == "__main__":
                             logging.error(sys_exc(sys.exc_info()))
                             dob_string = f"was born in {customer_dob}"
                         finally:
-                            context += f"\nWe have a new customer (name is {customer_name}, {dob_string}, allergic to {customer_allergies}). Greet they with a welcoming message"
+                            context += f"\nWe have a new customer. Their name is {customer_name}, {dob_string} and is allergic to {customer_allergies}"
 
+                        customer_greeting = "Hi!"
                         chatMessages[session_id] = [
                             SystemMessage(context),
+                            HumanMessage(customer_greeting),
                         ]
 
                         logging.info(f"{username} has logged in!")
                         logging.info(f"Message ID: {mid}")
-                        logging.info(f"Context: {context}")
+                        logging.info(f"Context: {context}\n{customer_greeting}")
 
                     else:  # new customer message
                         context = value["context"] or ""
@@ -322,11 +387,11 @@ if __name__ == "__main__":
 
                         # In case of any relevant vector DB document is found, add it to the System context
                         if len(vdb_context) > 0:
-                            context = "Additional context:"
+                            context = "Additional restaurant policies:"
                             for item in vdb_context:
                                 context += f"\n- {item}"
                             logging.info(context)
-                            chatMessages[session_id].append(SystemMessage(context))
+                            chatMessages[session_id].append(AIMessage(context))
 
                         if query:
                             chatMessages[session_id].append(HumanMessage(query))
@@ -339,7 +404,7 @@ if __name__ == "__main__":
                         total_tokens = cb.total_tokens
 
                     # Update chat history
-                    chatMessages[session_id].append(response)
+                    chatMessages[session_id].append(AIMessage(response.content))
 
                     # Adjust HTML response if required
                     response = adjust_html(

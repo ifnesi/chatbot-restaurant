@@ -23,8 +23,8 @@ from flask_login import (
 from utils import (
     TOPIC_LOGGING,
     TOPIC_CHATBOT_RESPONSES,
-    TOPIC_CUSTOMER_PROFILES,
     TOPIC_CUSTOMER_ACTIONS,
+    TOPIC_DB,
     KafkaClient,
     SerializationContext,
     MessageField,
@@ -68,37 +68,42 @@ class ChatbotResponses:
 
     def consumer(self, kafka) -> None:
         while True:
-            for topic, headers, key, value in kafka.avro_string_consumer(
+            for _, _, key, value in kafka.avro_string_consumer(
                 kafka.consumer_latest,
                 self.topics,
             ):
-                response_log = (value["response"] or "").strip()
-                while ">\n<" in response_log:
-                    response_log = response_log.replace(">\n<", "><")
-                value_log = {
-                    **value,
-                    "response": response_log,
-                }
-                logging.info(f"Message received for session_id {key}: {value_log}")
-                response_key = f"{key}:{value['mid']}"
-                value.pop("mid")
-                self.data[response_key] = value
+                if value:
+                    response_log = (value["response"] or "").strip()
+                    while ">\n<" in response_log:
+                        response_log = response_log.replace(">\n<", "><")
+                    while "\n\n" in response_log:
+                        response_log = response_log.replace("\n\n", "\n")
+                    while "\n" in response_log:
+                        response_log = response_log.replace("\n", "<br>")
+                    value_log = {
+                        **value,
+                        "response": response_log,
+                    }
+                    logging.info(f"Message received for session_id {key}: {value_log}")
+                    response_key = f"{key}:{value['mid']}"
+                    value_log.pop("mid")
+                    self.data[response_key] = value_log
 
 
 ####################
 # Global Variables #
 ####################
+RESTAURANT_NAME = "StreamBite"
+
 kafka = None
 customer_action_serialiser = None
 customer_profiles_and_logs = CustomerProfilesAndLogs(
-    topics=[TOPIC_CUSTOMER_PROFILES, TOPIC_LOGGING]
+    topics=[
+        TOPIC_LOGGING,
+        TOPIC_DB,
+    ]
 )
 chatbot_responses = ChatbotResponses(topics=[TOPIC_CHATBOT_RESPONSES])
-
-# Restaurant name
-with open(os.path.join("rag", "restaurant.json"), "r") as f:
-    restaurant_data = json.loads(f.read())
-RESTAURANT_NAME = restaurant_data["name"]
 
 
 #################
@@ -137,33 +142,6 @@ def login():
         )
 
 
-@app.route("/profiles", methods=["GET"])
-def profiles():
-    return render_template(
-        "profiles.html",
-        restaurant_name=RESTAURANT_NAME,
-        title="Profiles",
-        profiles=customer_profiles_and_logs.data,
-    )
-
-
-@app.route("/logs", methods=["GET"])
-def logs():
-    return render_template(
-        "logs.html",
-        restaurant_name=RESTAURANT_NAME,
-        title="Logs",
-    )
-
-
-@app.route("/get-logs", methods=["GET"])
-def get_logs():
-    logs_data = list()
-    while not customer_profiles_and_logs.queue.empty():
-        logs_data.append(customer_profiles_and_logs.queue.get())
-    return "".join(logs_data)
-
-
 @app.route("/login", methods=["POST"])
 def do_login():
     request_form = dict(request.form)
@@ -171,11 +149,11 @@ def do_login():
     password = request_form["password"]
 
     if username in customer_profiles_and_logs.data.keys():
-        password_salt = os.environ.get("PASSWORD_SALT")
-        hashed_password = customer_profiles_and_logs.data[username]["hashed_password"]
+        password_salt = os.environ.get("MD5_PASSWORD_SALT")
+        hashed_pwd = customer_profiles_and_logs.data[username]["hashed_pwd"]
         if assess_password(
             password_salt,
-            hashed_password,
+            hashed_pwd,
             password,
         ):
             # Login user
@@ -217,6 +195,61 @@ def do_login():
             ),
             401,
         )
+
+
+@app.route("/profiles", methods=["GET"])
+def profiles():
+    return render_template(
+        "profiles.html",
+        restaurant_name=RESTAURANT_NAME,
+        title="Profiles",
+        profiles=customer_profiles_and_logs.data,
+    )
+
+
+@app.route("/logs", methods=["GET"])
+def logs():
+    return render_template(
+        "logs.html",
+        restaurant_name=RESTAURANT_NAME,
+        title="Logs",
+    )
+
+
+@app.route("/data", methods=["GET"])
+def data():
+    def _process_data(data, indent=0):
+        html = ""
+        if isinstance(data, dict):
+            for key, value in data.items():
+                if indent == 0:
+                    html += f"<h4 class='text-warning mt-3'>{key}</h4>"
+                else:
+                    if isinstance(value, dict):
+                        html += (
+                            f"<h5 class='text-info mt-1'>{('&emsp;'*indent) + key}</h5>"
+                        )
+                    else:
+                        html += f"{'&emsp;'*indent}{key}:"
+                html += _process_data(value, indent=indent + 1)
+        else:
+            html += f"&nbsp;<span class='text-muted'>{data}</span><br>"
+        return html
+
+    return render_template(
+        "data.html",
+        restaurant_name=RESTAURANT_NAME,
+        title="Data",
+        data=_process_data(customer_profiles_and_logs.rag_data),
+    )
+
+
+@app.route("/get-logs", methods=["GET"])
+def get_logs():
+    logs_data = list()
+    while not customer_profiles_and_logs.queue.empty():
+        logs_data.append(customer_profiles_and_logs.queue.get())
+    return "".join(logs_data)
 
 
 @app.route("/send-message", methods=["POST"])
@@ -266,7 +299,7 @@ def send_message():
             ),
             on_delivery=kafka.delivery_report,
         )
-        logging.info("Flushing records...")
+        logging.info("Flushing records")
         kafka.producer.flush()
 
         # Wait for response from LLM model (sync for now)
@@ -323,7 +356,7 @@ def logout():
             ),
             on_delivery=kafka.delivery_report,
         )
-        logging.info("Flushing records...")
+        logging.info("Flushing records")
         kafka.producer.flush()
 
     except Exception:
@@ -347,9 +380,13 @@ def logout():
 @app.route("/", methods=["GET"])
 @login_required
 def chatbot():
-    llm_engine = (
-        "OpenAI" if os.environ.get("LLM_ENGINE").lower() == "openai" else "Groq"
-    )
+    llm_engine = os.environ.get("LLM_ENGINE").lower()
+    if llm_engine == "bedrock":
+        llm_engine = "AWS BedRock"
+    elif llm_engine == "openai":
+        llm_engine = "OpenAI"
+    else:
+        llm_engine = "Groq"
     return render_template(
         "chatbot.html",
         restaurant_name=RESTAURANT_NAME,

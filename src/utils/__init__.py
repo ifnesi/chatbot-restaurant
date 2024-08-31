@@ -86,7 +86,7 @@ class KafkaLogHandler(logging.StreamHandler):
                     )
                     self.kafka.producer_log.flush()
             except Exception:
-                pass
+                logging.error(sys_exc(sys.exc_info()))
             finally:
                 self.flush()
 
@@ -348,74 +348,76 @@ class CustomerProfilesAndLogs:
                 kafka.consumer_earliest,
                 self.topics,
             ):
+                try:
+                    if topic == TOPIC_LOGGING:  # Add log data into the local queue
+                        file_app = self._get_regex(self._pattern_app, value)
+                        value = value.strip().replace(
+                            f"[{file_app}]", f"<b>[{file_app}]</b>"
+                        )
 
-                if topic == TOPIC_LOGGING:  # Add log data into the local queue
-                    file_app = self._get_regex(self._pattern_app, value)
-                    value = value.strip().replace(
-                        f"[{file_app}]", f"<b>[{file_app}]</b>"
-                    )
+                        log_level = self._get_regex(self._pattern_level, value)
+                        value = value.strip().replace(
+                            f"[{log_level}]: ", f"<b>[{log_level}]</b><br>"
+                        )
 
-                    log_level = self._get_regex(self._pattern_level, value)
-                    value = value.strip().replace(
-                        f"[{log_level}]: ", f"<b>[{log_level}]</b><br>"
-                    )
+                        while "\n" in value:
+                            value = value.replace("\n", "<br>")
+                        self.queue.put(f"<div class='log-{file_app}'>{value}</div>")
 
-                    while "\n" in value:
-                        value = value.replace("\n", "<br>")
-                    self.queue.put(f"<div class='log-{file_app}'>{value}</div>")
+                    else:
+                        if isinstance(value, dict):
+                            payload_op, payload_key, payload_value = get_key_value(value)
 
-                else:
-                    if isinstance(value, dict):
-                        payload_op, payload_key, payload_value = get_key_value(value)
+                            if topic == TOPIC_DB_CUSTOMER_PROFILES:  # Load customer profile
+                                if payload_op == "d":
+                                    self.data.pop(payload_key, None)
+                                    logging.info(f"Deleted {topic} for {payload_key}")
 
-                        if topic == TOPIC_DB_CUSTOMER_PROFILES:  # Load customer profile
-                            if payload_op == "d":
-                                self.data.pop(payload_key, None)
-                                logging.info(f"Deleted {topic} for {payload_key}")
-
-                            else:
-                                payload_value["dob"] = time.strftime(
-                                    "%Y/%m/%d",
-                                    time.localtime(payload_value["dob"] * 60 * 60 * 24),
-                                )
-                                self.data[payload_key] = payload_value
-                                logging.info(
-                                    f"Loaded customer profile for {payload_key}: {json.dumps(payload_value)}"
-                                )
-
-                        else:
-                            if topic == TOPIC_DB_AI_RULES:
-                                rag_name = "ai_rules"
-                            elif topic == TOPIC_DB_POLICIES:
-                                rag_name = "policies"
-                            elif topic == TOPIC_DB_EXTRAS:
-                                rag_name = "extras"
-                            elif topic == TOPIC_DB_MAIN_MENU:
-                                rag_name = "menu"
-                            elif topic == TOPIC_DB_KIDS_MENU:
-                                rag_name = "kidsmenu"
-                            else:
-                                rag_name = "restaurant"
-
-                            if payload_op == "d":
-                                self.rag_data[rag_name].pop(payload_key, None)
-                                logging.info(f"Deleted {rag_name} for {payload_key}")
-
-                            else:
-                                # Main and Kids menu
-                                if rag_name in ["menu", "kidsmenu"]:
-                                    rag_value = payload_value
-                                # Extras, Policies, Restaurant and AI Rules
                                 else:
-                                    rag_value = payload_value["description"]
+                                    payload_value["dob"] = time.strftime(
+                                        "%Y/%m/%d",
+                                        time.localtime(payload_value["dob"] * 60 * 60 * 24),
+                                    )
+                                    self.data[payload_key] = payload_value
+                                    logging.info(
+                                        f"Loaded customer profile for {payload_key}: {json.dumps(payload_value)}"
+                                    )
 
-                                # Update Data
-                                if rag_name not in self.rag_data.keys():
-                                    self.rag_data[rag_name] = dict()
-                                self.rag_data[rag_name][payload_key] = rag_value
-                                logging.info(
-                                    f"Loaded {rag_name} for {payload_key}: {rag_value}"
-                                )
+                            else:
+                                if topic == TOPIC_DB_AI_RULES:
+                                    rag_name = "ai_rules"
+                                elif topic == TOPIC_DB_POLICIES:
+                                    rag_name = "policies"
+                                elif topic == TOPIC_DB_EXTRAS:
+                                    rag_name = "extras"
+                                elif topic == TOPIC_DB_MAIN_MENU:
+                                    rag_name = "menu"
+                                elif topic == TOPIC_DB_KIDS_MENU:
+                                    rag_name = "kidsmenu"
+                                else:
+                                    rag_name = "restaurant"
+
+                                if payload_op == "d":
+                                    self.rag_data[rag_name].pop(payload_key, None)
+                                    logging.info(f"Deleted {rag_name} for {payload_key}")
+
+                                else:
+                                    # Main and Kids menu
+                                    if rag_name in ["menu", "kidsmenu"]:
+                                        rag_value = payload_value
+                                    # Extras, Policies, Restaurant and AI Rules
+                                    else:
+                                        rag_value = payload_value["description"]
+
+                                    # Update Data
+                                    if rag_name not in self.rag_data.keys():
+                                        self.rag_data[rag_name] = dict()
+                                    self.rag_data[rag_name][payload_key] = rag_value
+                                    logging.info(
+                                        f"Loaded {rag_name} for {payload_key}: {rag_value}"
+                                    )
+                except Exception:
+                    logging.error(sys_exc(sys.exc_info()))
 
 
 #############
@@ -495,7 +497,6 @@ def initial_prompt(
         ],
         4,
     )
-    logging.info(result)
     result += f"5. Kids menu:\n"
     result += get_menu(
         rag_data.get("kidsmenu", dict()),

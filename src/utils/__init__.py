@@ -1,17 +1,17 @@
+import re
+import os
 import sys
-import hmac
 import json
 import time
-import base64
 import signal
 import hashlib
 import logging
-import regex as re
 
 from queue import Queue
 from bs4 import BeautifulSoup
 from datetime import date, datetime
 from configparser import ConfigParser
+from passlib.hash import des_crypt
 from dateutil.relativedelta import relativedelta
 
 from confluent_kafka import Producer, Consumer, KafkaException
@@ -30,11 +30,17 @@ from confluent_kafka.schema_registry.avro import AvroSerializer, AvroDeserialize
 ####################
 # Global Variables #
 ####################
-TOPIC_RAG = "^chatbot-restaurant-rag-.*"
-TOPIC_LOGGING = "chatbot-restaurant-logs"
-TOPIC_CUSTOMER_ACTIONS = "chatbot-restaurant-customer_actions"
-TOPIC_CUSTOMER_PROFILES = "chatbot-restaurant-customer_profiles"
-TOPIC_CHATBOT_RESPONSES = "chatbot-restaurant-chatbot_responses"
+TOPIC_LOGGING = "chatbot-logs"
+TOPIC_CUSTOMER_ACTIONS = "chatbot-customer_actions"
+TOPIC_CHATBOT_RESPONSES = "chatbot-chatbot_responses"
+TOPIC_DB = "^db.public.*"
+TOPIC_DB_CUSTOMER_PROFILES = "db.public.customer_profiles"
+TOPIC_DB_EXTRAS = "db.public.extras"
+TOPIC_DB_AI_RULES = "db.public.ai_rules"
+TOPIC_DB_POLICIES = "db.public.policies"
+TOPIC_DB_RESTAURANT = "db.public.restaurant"
+TOPIC_DB_MAIN_MENU = "db.public.main_menu"
+TOPIC_DB_KIDS_MENU = "db.public.kids_menu"
 
 
 ###########
@@ -167,7 +173,7 @@ class KafkaClient:
         frame,
     ):
         if self.producer:
-            logging.info("Flushing messages...")
+            logging.info("Flushing messages")
             try:
                 self.producer.flush()
                 self.producer = None
@@ -182,7 +188,7 @@ class KafkaClient:
 
         if self.consumer_earliest:
             logging.info(
-                f"Closing consumer {self._consumer_config_earliest['client.id']} ({self._consumer_config_earliest['group.id']})..."
+                f"Closing consumer {self._consumer_config_earliest['client.id']} ({self._consumer_config_earliest['group.id']})"
             )
             try:
                 self.consumer_earliest.close()
@@ -192,7 +198,7 @@ class KafkaClient:
 
         if self.consumer_latest:
             logging.info(
-                f"Closing consumer {self._consumer_config_latest['client.id']} ({self._consumer_config_latest['group.id']})..."
+                f"Closing consumer {self._consumer_config_latest['client.id']} ({self._consumer_config_latest['group.id']})"
             )
             try:
                 self.consumer_latest.commit()
@@ -252,7 +258,7 @@ class KafkaClient:
         timeout_seconds_sync: int = 30,
     ) -> None:
         if topic not in self.topic_list:
-            logging.info(f"Creating topic '{topic}'...")
+            logging.info(f"Creating topic '{topic}'")
             self.admin_client.create_topics(
                 [
                     NewTopic(
@@ -326,10 +332,11 @@ class CustomerProfilesAndLogs:
 
     def __init__(self, topics) -> None:
         self.data = dict()
+        self.rag_data = dict()
         self.queue = Queue()
         self.topics = topics
-        self._pattern_app = re.compile("^\[(.*?)\]")
-        self._pattern_level = re.compile("\[([A-Z]+)\]\:")
+        self._pattern_app = re.compile(r"^\[(.*?)\]")
+        self._pattern_level = re.compile(r"\[([A-Z]+)\]\:")
 
     def _get_regex(self, pattern: re.Pattern, text: str) -> str:
         result = pattern.findall(text) or [""]
@@ -337,35 +344,95 @@ class CustomerProfilesAndLogs:
 
     def consumer(self, kafka) -> None:
         while True:
-            for topic, headers, key, value in kafka.avro_string_consumer(
+            for topic, _, _, value in kafka.avro_string_consumer(
                 kafka.consumer_earliest,
                 self.topics,
             ):
-                if value is None:
-                    self.data.pop(key, None)
-                    logging.info(f"Deleted customer profile for {key}")
+
+                if topic == TOPIC_LOGGING:  # Add log data into the local queue
+                    file_app = self._get_regex(self._pattern_app, value)
+                    value = value.strip().replace(
+                        f"[{file_app}]", f"<b>[{file_app}]</b>"
+                    )
+
+                    log_level = self._get_regex(self._pattern_level, value)
+                    value = value.strip().replace(
+                        f"[{log_level}]: ", f"<b>[{log_level}]</b><br>"
+                    )
+
+                    while "\n" in value:
+                        value = value.replace("\n", "<br>")
+                    self.queue.put(f"<div class='log-{file_app}'>{value}</div>")
+
                 else:
-                    if topic == TOPIC_LOGGING:  # Add log data into the local queue
+                    if isinstance(value, dict):
+                        payload_op, payload_key, payload_value = get_key_value(value)
 
-                        file_app = self._get_regex(self._pattern_app, value)
-                        value = value.strip().replace(f"[{file_app}]", f"<b>[{file_app}]</b>")
-                        
-                        log_level = self._get_regex(self._pattern_level, value)
-                        value = value.strip().replace(f"[{log_level}]: ", f"<b>[{log_level}]</b><br>")
+                        if topic == TOPIC_DB_CUSTOMER_PROFILES:  # Load customer profile
+                            if payload_op == "d":
+                                self.data.pop(payload_key, None)
+                                logging.info(f"Deleted {topic} for {payload_key}")
 
-                        while "\n" in value:
-                            value = value.replace("\n", "<br>")
-                        self.queue.put(f"<div class='log-{file_app}'>{value}</div>")
-                    else:
-                        self.data[key] = value
-                        logging.info(
-                            f"Loaded customer profile for {key}: {json.dumps(value)}"
-                        )
+                            else:
+                                payload_value["dob"] = time.strftime(
+                                    "%Y/%m/%d",
+                                    time.localtime(payload_value["dob"] * 60 * 60 * 24),
+                                )
+                                self.data[payload_key] = payload_value
+                                logging.info(
+                                    f"Loaded customer profile for {payload_key}: {json.dumps(payload_value)}"
+                                )
+
+                        else:
+                            if topic == TOPIC_DB_AI_RULES:
+                                rag_name = "ai_rules"
+                            elif topic == TOPIC_DB_POLICIES:
+                                rag_name = "policies"
+                            elif topic == TOPIC_DB_EXTRAS:
+                                rag_name = "extras"
+                            elif topic == TOPIC_DB_MAIN_MENU:
+                                rag_name = "menu"
+                            elif topic == TOPIC_DB_KIDS_MENU:
+                                rag_name = "kidsmenu"
+                            else:
+                                rag_name = "restaurant"
+
+                            if payload_op == "d":
+                                self.rag_data[rag_name].pop(payload_key, None)
+                                logging.info(f"Deleted {rag_name} for {payload_key}")
+
+                            else:
+                                # Main and Kids menu
+                                if rag_name in ["menu", "kidsmenu"]:
+                                    rag_value = payload_value
+                                # Extras, Policies, Restaurant and AI Rules
+                                else:
+                                    rag_value = payload_value["description"]
+
+                                # Update Data
+                                if rag_name not in self.rag_data.keys():
+                                    self.rag_data[rag_name] = dict()
+                                self.rag_data[rag_name][payload_key] = rag_value
+                                logging.info(
+                                    f"Loaded {rag_name} for {payload_key}: {rag_value}"
+                                )
 
 
 #############
 # Functions #
 #############
+def flat_sql(
+    data: str,
+    env_vars: dict,
+) -> list:
+    result = data.replace("\r", "").replace("\n", " ").replace("\t", " ")
+    for var in set(re.findall("\$ENV\.([\w_-]*)", data)):
+        result = result.replace(f"$ENV.{var}", env_vars.get(var, ""))
+    while "  " in result:
+        result = result.replace("  ", " ")
+    return [f"{n.strip()};" for n in result.split(";") if n.strip()]
+
+
 def calculate_age(birth_date: str) -> int:
     birth_date_parsed = datetime.strptime(birth_date, "%Y/%m/%d")
     today = date.today()
@@ -389,28 +456,32 @@ def initial_prompt(
     ) -> str:
         result = ""
         for n, section in enumerate(sections):
-            result += f"- {ord}.{n+1} {section}:\n"
-            for m, data in enumerate(rag_data.get(section, dict()).values()):
-                result += (
-                    f"  - {ord}.{n+1}.{m+1} {data['name']} ({data['description']}): "
-                )
-                items = list()
-                for key, value in data.items():
-                    if key not in ["name", "description"]:
-                        items.append(f"{key} {value}")
-                result += f"{', '.join(items)}\n"
+            result += (
+                f"{ord}.{n+1} {section.replace('_', ' ').replace('-', ' ').title()}:\n"
+            )
+            m = 0
+            for v in rag_data.values():
+                # Filter by menu section
+                if v["section"] == section:
+                    result += f"{ord}.{n+1}.{m+1} {v['name'].replace('_', ' ').replace('-', ' ').title()} ({v['description']}): "
+                    items = list()
+                    for key, value in v.items():
+                        if key not in ["name", "description", "section"]:
+                            items.append(f"{key.title()} {value}")
+                    result += f"{', '.join(items)}\n"
+                    m += 1
         return result
 
     result = f"You are an AI Assistant for a restaurant. Your name is: {waiter_name}.\n"
     result += "1. You MUST comply with these AI rules:\n"
     for key, value in rag_data.get("ai_rules", dict()).items():
-        result += f"- {key}: {value}\n"
+        result += f"- {key.replace('_', ' ').replace('-', ' ').title()}: {value}\n"
     result += "2. Details about the restaurant you work for:\n"
     for key, value in rag_data.get("restaurant", dict()).items():
-        result += f"- {key}: {value}\n"
+        result += f"- {key.replace('_', ' ').replace('-', ' ').title()}: {value}\n"
     result += "3. Restaurant policies:\n"
     for key, value in rag_data.get("policies", dict()).items():
-        result += f"- {key}: {value}\n"
+        result += f"- {key.replace('_', ' ').replace('-', ' ').title()}: {value}\n"
     result += "4. Main menu:\n"
     result += get_menu(
         rag_data.get("menu", dict()),
@@ -424,6 +495,7 @@ def initial_prompt(
         ],
         4,
     )
+    logging.info(result)
     result += f"5. Kids menu:\n"
     result += get_menu(
         rag_data.get("kidsmenu", dict()),
@@ -438,33 +510,12 @@ def initial_prompt(
     return result
 
 
-def hash_password(
-    salt: str,
-    password: str,
-) -> str:
-    hashed_password = hashlib.pbkdf2_hmac(
-        "sha256",
-        password.encode("utf-8"),
-        salt.encode("utf-8"),
-        100000,
-    )
-    return base64.b64encode(hashed_password).decode("utf-8")
-
-
 def assess_password(
     salt: str,
     hashed_password: str,
     password: str,
 ) -> bool:
-    return hmac.compare_digest(
-        base64.b64decode(hashed_password.encode("utf-8")),
-        hashlib.pbkdf2_hmac(
-            "sha256",
-            password.encode("utf-8"),
-            salt.encode("utf-8"),
-            100000,
-        ),
-    )
+    return des_crypt.using(salt=salt[:2]).hash(password) == hashed_password
 
 
 def adjust_html(
@@ -493,3 +544,30 @@ def adjust_html(
 
 def md5_int(text: bytes) -> int:
     return int(hashlib.md5(text.encode("utf-8")).hexdigest(), 16)
+
+
+def unset_flag(filename: str) -> None:
+    if os.path.exists(filename):
+        os.remove(filename)
+
+
+def set_flag(filename: str) -> None:
+    open(filename, "w").close()
+
+
+def get_key_value(
+    value: dict,
+    key: str = "id",
+) -> tuple:
+    if value["op"] in ["c", "u"]:  # Create / Update
+        index = "after"
+    else:  # Delete
+        index = "before"
+    payload_value = dict(value[index])
+    payload_key = payload_value[key]
+    payload_value.pop(key, None)
+    return (
+        value["op"],
+        payload_key,
+        payload_value,
+    )

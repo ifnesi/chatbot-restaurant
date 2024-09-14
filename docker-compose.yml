@@ -112,6 +112,14 @@ services:
       CONTROL_CENTER_CONNECT_CONNECT-CLUSTER_CLUSTER: http://connect:8083
       PORT: 9021
 
+  # Qdrant VectorDB
+  qdrant:
+    image: qdrant/qdrant:latest
+    hostname: qdrant
+    container_name: qdrant
+    ports:
+      - 6333:6333
+
   # Chatbot FE/BE
   chatbot:
     build: .
@@ -121,6 +129,7 @@ services:
       - broker
       - schema-registry
       - control-center
+      - qdrant
     ports:
       - $WEBAPP_PORT:$WEBAPP_PORT
 

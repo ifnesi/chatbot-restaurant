@@ -30,7 +30,7 @@ from utils import (
     KafkaClient,
     SerializationContext,
     MessageField,
-    md5_int,
+    md5_hash,
     sys_exc,
     set_flag,
     unset_flag,
@@ -53,7 +53,7 @@ chatVectorDB = dict()
 # Classes #
 ###########
 class LoadRAG:
-    """Load in memory RAG / Customer Profiles"""
+    """Load RAG / Customer Profiles"""
 
     def __init__(
         self,
@@ -118,7 +118,7 @@ class LoadRAG:
 
                         # Vector DB
                         elif topic == TOPIC_DB_EXTRAS:
-                            id = md5_int(payload_key)
+                            id = md5_hash(payload_key)
 
                             if payload_op == "d":
                                 self.vdb_client.delete(
@@ -216,9 +216,12 @@ if __name__ == "__main__":
     logging.info(f"Loading sentence transformer, model: {SENTENCE_TRANSFORMER}")
     VDB_MODEL = SentenceTransformer(SENTENCE_TRANSFORMER)
 
-    # Qdrant (Vector-DB), load it in memory
-    logging.info("Loading VectorDB in memory (Qdrant)")
-    VDB_CLIENT = QdrantClient(":memory:")
+    # Qdrant (Vector-DB)
+    logging.info("Loading VectorDB client (Qdrant)")
+    VDB_CLIENT = QdrantClient(
+        host="qdrant",
+        port=6333,
+    )
 
     # Create collection
     logging.info(f"Creating VectorDB collection: {VDB_COLLECTION}")

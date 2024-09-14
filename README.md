@@ -10,7 +10,7 @@ As GroqCloud is free to use the current LLM model used (`mixtral-8x7b-32768`) ha
 
 If you prefer, you can opt to use OpenAI but it is a paid service.
 
-Qdrant, although has the [SaaS Cloud](https://qdrant.tech/documentation/cloud/) option this demo uses the local [in memory version](https://github.com/qdrant/qdrant-client) of it.
+Qdrant, although has the [SaaS Cloud](https://qdrant.tech/documentation/cloud/) option this demo uses the local/docker version (https://github.com/qdrant/qdrant-client) of it.
 
 ## Demo Diagram
 ### Overview
@@ -145,7 +145,7 @@ A [Postgres CDC source connector](https://docs.confluent.io/cloud/current/connec
 In parallel to that the chatbot back-end microservices (python script `src/chatbot.py`) will start and perform the following tasks:
  - Thread #1:
    - Load in memory the Customer Profiles, AI Rules, Restaurant Policies, Restaurant Information, Main Menu and Kids Menu (as consumed from the corresponding topics)
-   - Run a Qdrant vector search engine in memory, create a local collection (`chatbot_restaurant`), generate the embeddings (using sentence transformer `all-MiniLM-L6-v2`) and load add Vector DB data (as consumed from the corresponding topic) into it
+   - Run a Qdrant vector search engine, create a local collection (`chatbot_restaurant`), generate the embeddings (using sentence transformer `all-MiniLM-L6-v2`) and load add Vector DB data (as consumed from the corresponding topic) into it
  - Thread #2:
    - Consume the customer messages from topic `chatbot-customer_actions` and post it to the LLM engine (as set on the environment variable `LLM_ENGINE`). It uses LangChain to be able to seemlesly interact with AWS BedRock, OpenAI or GroqCloud. All messages are buffered in memory per user session and cleared after logout. This can be optmised in order to reduce the number of tokens passed everything to the LLM engine
    - The initial LLM prompt will contain the name of the waiter/AI assistant, name/age of the customer as well as all AI Rules, Restaurant Policies, Restaurant Information, Main Menu and Kids Menu, for example:

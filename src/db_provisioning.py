@@ -37,7 +37,7 @@ if __name__ == "__main__":
     kafka = KafkaClient(
         env_vars.get("KAFKA_CONFIG"),
         env_vars.get("CLIENT_DB_PROVISIONING"),
-        FILE_APP,
+        file_app=FILE_APP,
     )
 
     # Create customer actions topic

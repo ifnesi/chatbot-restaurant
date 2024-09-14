@@ -106,3 +106,13 @@ p {
   font-size: 14px;
   font-family: monospace, 'Courier New';
 }
+
+.log-kafka2vDB {
+  color: black;
+  background-color: rgb(253, 149, 255);
+  margin: 6px;
+  padding: 2px;
+  border-radius: 3px;
+  font-size: 14px;
+  font-family: monospace, 'Courier New';
+}

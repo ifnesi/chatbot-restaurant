@@ -23,7 +23,13 @@ from utils import (
     TOPIC_LOGGING,
     TOPIC_CHATBOT_RESPONSES,
     TOPIC_CUSTOMER_ACTIONS,
-    TOPIC_DB,
+    TOPIC_DB_CUSTOMER_PROFILES,
+    TOPIC_DB_AI_RULES,
+    TOPIC_DB_POLICIES,
+    TOPIC_DB_RESTAURANT,
+    TOPIC_DB_MAIN_MENU,
+    TOPIC_DB_KIDS_MENU,
+    TOPIC_DB_EXTRAS,
     KafkaClient,
     SerializationContext,
     MessageField,
@@ -61,32 +67,34 @@ class User(UserMixin):
 class ChatbotResponses:
     """Process chatbot responses"""
 
-    def __init__(self, topics) -> None:
+    def __init__(
+        self,
+        topics: list = None,
+    ) -> None:
         self.data = dict()
         self.topics = topics
 
     def consumer(self, kafka) -> None:
-        while True:
-            for _, _, key, value in kafka.avro_string_consumer(
-                kafka.consumer_latest,
-                self.topics,
-            ):
-                if value:
-                    response_log = (value["response"] or "").strip()
-                    while ">\n<" in response_log:
-                        response_log = response_log.replace(">\n<", "><")
-                    while "\n\n" in response_log:
-                        response_log = response_log.replace("\n\n", "\n")
-                    while "\n" in response_log:
-                        response_log = response_log.replace("\n", "<br>")
-                    value_log = {
-                        **value,
-                        "response": response_log,
-                    }
-                    logging.info(f"Message received for session_id {key}: {value_log}")
-                    response_key = f"{key}:{value['mid']}"
-                    value_log.pop("mid")
-                    self.data[response_key] = value_log
+        for _, _, key, value in kafka.avro_string_consumer(
+            kafka.consumer,
+            self.topics,
+        ):
+            if value:
+                response_log = (value["response"] or "").strip()
+                while ">\n<" in response_log:
+                    response_log = response_log.replace(">\n<", "><")
+                while "\n\n" in response_log:
+                    response_log = response_log.replace("\n\n", "\n")
+                while "\n" in response_log:
+                    response_log = response_log.replace("\n", "<br>")
+                value_log = {
+                    **value,
+                    "response": response_log,
+                }
+                logging.info(f"Message received for session_id {key}: {value_log}")
+                response_key = f"{key}:{value['mid']}"
+                value_log.pop("mid")
+                self.data[response_key] = value_log
 
 
 ####################
@@ -99,7 +107,13 @@ customer_action_serialiser = None
 customer_profiles_and_logs = CustomerProfilesAndLogs(
     topics=[
         TOPIC_LOGGING,
-        TOPIC_DB,
+        TOPIC_DB_CUSTOMER_PROFILES,
+        TOPIC_DB_AI_RULES,
+        TOPIC_DB_POLICIES,
+        TOPIC_DB_RESTAURANT,
+        TOPIC_DB_MAIN_MENU,
+        TOPIC_DB_KIDS_MENU,
+        TOPIC_DB_EXTRAS,
     ]
 )
 chatbot_responses = ChatbotResponses(topics=[TOPIC_CHATBOT_RESPONSES])
@@ -408,25 +422,31 @@ if __name__ == "__main__":
     # Load env variables
     load_dotenv(find_dotenv())
 
+    # Start Customer Profiles and Logs Consumer (thread #1)
+    kafka_t1 = KafkaClient(
+        os.environ.get("KAFKA_CONFIG"),
+        f"{os.environ.get('CLIENT_ID_WEBAPP')}-t1",
+        file_app=FILE_APP,
+        set_consumer=True,
+    )
+    Thread(
+        target=customer_profiles_and_logs.consumer,
+        args=(kafka_t1,),
+    ).start()
+
+    # Start chatbot responses Consumer (thread #2)
     kafka = KafkaClient(
         os.environ.get("KAFKA_CONFIG"),
-        os.environ.get("CLIENT_ID_WEBAPP"),
-        FILE_APP,
-        set_consumer_latest=True,
-        set_consumer_earliest=True,
+        f"{os.environ.get('CLIENT_ID_WEBAPP')}-t2",
+        set_producer=True,
+        set_consumer=True,
+        auto_offset_reset="latest",
+        enable_auto_commit=True,
     )
-
     with open(os.path.join("schemas", "customer_message.avro"), "r") as f:
         schema_str = f.read()
     customer_action_serialiser = kafka.avro_serialiser(schema_str)
 
-    # Start Customer Profiles and Logs Consumer thread
-    Thread(
-        target=customer_profiles_and_logs.consumer,
-        args=(kafka,),
-    ).start()
-
-    # Start chatbot responses Consumer thread
     Thread(
         target=chatbot_responses.consumer,
         args=(kafka,),

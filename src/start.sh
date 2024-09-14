@@ -58,22 +58,17 @@ echo ""
 curl -s http://connect:8083/connectors/postgres_cdc/status
 echo ""
 
-logging "Provisioning Postgres DB" "INFO" -n
-exec python db_provisioning.py &
-# Wait DB provisioning
-while [ ! -f $FLAG_FILE ];  do
-    echo -n "."
-    sleep 1
+# Start microservices
+for ms in "db_provisioning.py" "kafka2vDB.py" "chatbot.py"; do
+  logging "Starting microservice $ms" "INFO" -n
+  exec python $ms &
+  while [ ! -f $FLAG_FILE ];  do
+      echo -n "."
+      sleep 1
+  done
+  echo ""
+  rm $FLAG_FILE
 done
-rm $FLAG_FILE
 
-logging "Starting chatbot microservice" "INFO" -n
-exec python chatbot.py &
-# Allow sentence transformer to load
-while [ ! -f $FLAG_FILE ]; do
-    echo -n "."
-    sleep 1
-done
-rm $FLAG_FILE
-
+# Start web application
 exec python webapp.py

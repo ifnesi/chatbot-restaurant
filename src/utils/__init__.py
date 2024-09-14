@@ -33,14 +33,15 @@ from confluent_kafka.schema_registry.avro import AvroSerializer, AvroDeserialize
 TOPIC_LOGGING = "chatbot-logs"
 TOPIC_CUSTOMER_ACTIONS = "chatbot-customer_actions"
 TOPIC_CHATBOT_RESPONSES = "chatbot-chatbot_responses"
-TOPIC_DB = "^db.public.*"
-TOPIC_DB_CUSTOMER_PROFILES = "db.public.customer_profiles"
 TOPIC_DB_EXTRAS = "db.public.extras"
 TOPIC_DB_AI_RULES = "db.public.ai_rules"
 TOPIC_DB_POLICIES = "db.public.policies"
-TOPIC_DB_RESTAURANT = "db.public.restaurant"
 TOPIC_DB_MAIN_MENU = "db.public.main_menu"
 TOPIC_DB_KIDS_MENU = "db.public.kids_menu"
+TOPIC_DB_RESTAURANT = "db.public.restaurant"
+TOPIC_DB_CUSTOMER_PROFILES = "db.public.customer_profiles"
+VDB_COLLECTION = "chatbot_restaurant"
+SENTENCE_TRANSFORMER = "all-MiniLM-L6-v2"
 
 
 ###########
@@ -98,15 +99,16 @@ class KafkaClient:
         self,
         config_file: str,
         client_id: str,
-        file_app,
-        set_consumer_earliest: bool = False,
-        set_consumer_latest: bool = False,
+        file_app: str = None,
+        set_producer: bool = False,
+        set_consumer: bool = False,
+        auto_offset_reset: str = "earliest",
+        enable_auto_commit: bool = False,
     ) -> None:
         self.producer = None
         self.producer_log = None
         self.admin_client = None
-        self.consumer_latest = None
-        self.consumer_earliest = None
+        self.consumer = None
 
         # Set signal handlers
         signal.signal(signal.SIGINT, self.signal_handler)
@@ -123,49 +125,40 @@ class KafkaClient:
         self._schema_registry_config = dict(self._config["schema-registry"])
         self.schema_registry_client = SchemaRegistryClient(self._schema_registry_config)
 
-        # Producer
-        self._producer_config = {
-            "client.id": f"{client_id}-producer",
-        }
-        self._producer_config.update(dict(self._config["kafka"]))
-        self.producer = Producer(self._producer_config)
-        self._producer_config["client.id"] = f"{client_id}-producer-logger"
-        self.producer_log = Producer(self._producer_config)
+        # Producer(s)
+        self._producer_config = dict(self._config["kafka"])
+        if set_producer:
+            self._producer_config["client.id"] = f"{client_id}-producer"
+            self.producer = Producer(self._producer_config)
 
         # Admin
         self.admin_client = AdminClient(self._producer_config)
+
         # Get list of topics
         self.topic_list = self.get_topics()
 
-        # Consumer Earliest
-        if set_consumer_earliest:
-            self._consumer_config_earliest = {
-                "group.id": f"{client_id}-consumer-earliest",
-                "client.id": f"{client_id}-consumer-earliest-01",
-                "auto.offset.reset": "earliest",
-                "enable.auto.commit": "false",
-            }
-            self._consumer_config_earliest.update(dict(self._config["kafka"]))
-            self.consumer_earliest = Consumer(self._consumer_config_earliest)
+        # Log producer
+        if file_app:
+            self._producer_config["client.id"] = f"{client_id}-producer-logger"
+            self.producer_log = Producer(self._producer_config)
+            # Append Log Handlers (Kafka)
+            log_handler = KafkaLogHandler(
+                self,
+                TOPIC_LOGGING,
+                file_app,
+            )
+            log_handler._append_handler()
 
-        # Consumer Latest
-        if set_consumer_latest:
-            self._consumer_config_latest = {
-                "group.id": f"{client_id}-consumer-latest",
-                "client.id": f"{client_id}-consumer-latest-01",
-                "auto.offset.reset": "latest",
-                "enable.auto.commit": "true",
+        # Consumer
+        if set_consumer:
+            self._consumer_config = {
+                "group.id": f"{client_id}-consumer",
+                "client.id": f"{client_id}-consumer-01",
+                "auto.offset.reset": auto_offset_reset,
+                "enable.auto.commit": "true" if enable_auto_commit else "false",
             }
-            self._consumer_config_latest.update(dict(self._config["kafka"]))
-            self.consumer_latest = Consumer(self._consumer_config_latest)
-
-        # Append Log Handlers (Kafka)
-        log_handler = KafkaLogHandler(
-            self,
-            TOPIC_LOGGING,
-            file_app,
-        )
-        log_handler._append_handler()
+            self._consumer_config.update(dict(self._config["kafka"]))
+            self.consumer = Consumer(self._consumer_config)
 
     def signal_handler(
         self,
@@ -180,32 +173,22 @@ class KafkaClient:
             except Exception:
                 logging.error(sys_exc(sys.exc_info()))
 
+        if self.consumer:
+            logging.info(
+                f"Closing consumer {self._consumer_config['client.id']} ({self._consumer_config['group.id']})"
+            )
+            try:
+                self.consumer.close()
+                self.consumer = None
+            except Exception:
+                logging.error(sys_exc(sys.exc_info()))
+
+        if self.producer_log:
             try:
                 self.producer_log.flush()
                 self.producer_log = None
             except Exception:
-                logging.error(sys_exc(sys.exc_info()))
-
-        if self.consumer_earliest:
-            logging.info(
-                f"Closing consumer {self._consumer_config_earliest['client.id']} ({self._consumer_config_earliest['group.id']})"
-            )
-            try:
-                self.consumer_earliest.close()
-                self.consumer_earliest = None
-            except Exception:
-                logging.error(sys_exc(sys.exc_info()))
-
-        if self.consumer_latest:
-            logging.info(
-                f"Closing consumer {self._consumer_config_latest['client.id']} ({self._consumer_config_latest['group.id']})"
-            )
-            try:
-                self.consumer_latest.commit()
-                self.consumer_latest.close()
-                self.consumer_latest = None
-            except Exception:
-                logging.error(sys_exc(sys.exc_info()))
+                pass  # do not log response as the logger kafka producer is now closed/flushed
 
         sys.exit(0)
 
@@ -330,7 +313,7 @@ class KafkaClient:
 class CustomerProfilesAndLogs:
     """Load customer profile in memory and Logs into a queue"""
 
-    def __init__(self, topics) -> None:
+    def __init__(self, topics: list = None) -> None:
         self.data = dict()
         self.rag_data = dict()
         self.queue = Queue()
@@ -343,81 +326,80 @@ class CustomerProfilesAndLogs:
         return result[0]
 
     def consumer(self, kafka) -> None:
-        while True:
-            for topic, _, _, value in kafka.avro_string_consumer(
-                kafka.consumer_earliest,
-                self.topics,
-            ):
-                try:
-                    if topic == TOPIC_LOGGING:  # Add log data into the local queue
-                        file_app = self._get_regex(self._pattern_app, value)
-                        value = value.strip().replace(
-                            f"[{file_app}]", f"<b>[{file_app}]</b>"
-                        )
+        for topic, _, _, value in kafka.avro_string_consumer(
+            kafka.consumer,
+            self.topics,
+        ):
+            try:
+                if topic == TOPIC_LOGGING:  # Add log data into the local queue
+                    file_app = self._get_regex(self._pattern_app, value)
+                    value = value.strip().replace(
+                        f"[{file_app}]", f"<b>[{file_app}]</b>"
+                    )
 
-                        log_level = self._get_regex(self._pattern_level, value)
-                        value = value.strip().replace(
-                            f"[{log_level}]: ", f"<b>[{log_level}]</b><br>"
-                        )
+                    log_level = self._get_regex(self._pattern_level, value)
+                    value = value.strip().replace(
+                        f"[{log_level}]: ", f"<b>[{log_level}]</b><br>"
+                    )
 
-                        while "\n" in value:
-                            value = value.replace("\n", "<br>")
-                        self.queue.put(f"<div class='log-{file_app}'>{value}</div>")
+                    while "\n" in value:
+                        value = value.replace("\n", "<br>")
+                    self.queue.put(f"<div class='log-{file_app}'>{value}</div>")
 
-                    else:
-                        if isinstance(value, dict):
-                            payload_op, payload_key, payload_value = get_key_value(value)
+                else:
+                    if isinstance(value, dict):
+                        payload_op, payload_key, payload_value = get_key_value(value)
 
-                            if topic == TOPIC_DB_CUSTOMER_PROFILES:  # Load customer profile
-                                if payload_op == "d":
-                                    self.data.pop(payload_key, None)
-                                    logging.info(f"Deleted {topic} for {payload_key}")
-
-                                else:
-                                    payload_value["dob"] = time.strftime(
-                                        "%Y/%m/%d",
-                                        time.localtime(payload_value["dob"] * 60 * 60 * 24),
-                                    )
-                                    self.data[payload_key] = payload_value
-                                    logging.info(
-                                        f"Loaded customer profile for {payload_key}: {json.dumps(payload_value)}"
-                                    )
+                        if topic == TOPIC_DB_CUSTOMER_PROFILES:  # Load customer profile
+                            if payload_op == "d":
+                                self.data.pop(payload_key, None)
+                                logging.info(f"Deleted {topic} for {payload_key}")
 
                             else:
-                                if topic == TOPIC_DB_AI_RULES:
-                                    rag_name = "ai_rules"
-                                elif topic == TOPIC_DB_POLICIES:
-                                    rag_name = "policies"
-                                elif topic == TOPIC_DB_EXTRAS:
-                                    rag_name = "extras"
-                                elif topic == TOPIC_DB_MAIN_MENU:
-                                    rag_name = "menu"
-                                elif topic == TOPIC_DB_KIDS_MENU:
-                                    rag_name = "kidsmenu"
+                                payload_value["dob"] = time.strftime(
+                                    "%Y/%m/%d",
+                                    time.localtime(payload_value["dob"] * 60 * 60 * 24),
+                                )
+                                self.data[payload_key] = payload_value
+                                logging.info(
+                                    f"Loaded customer profile for {payload_key}: {json.dumps(payload_value)}"
+                                )
+
+                        else:
+                            if topic == TOPIC_DB_AI_RULES:
+                                rag_name = "ai_rules"
+                            elif topic == TOPIC_DB_POLICIES:
+                                rag_name = "policies"
+                            elif topic == TOPIC_DB_EXTRAS:
+                                rag_name = "extras"
+                            elif topic == TOPIC_DB_MAIN_MENU:
+                                rag_name = "menu"
+                            elif topic == TOPIC_DB_KIDS_MENU:
+                                rag_name = "kidsmenu"
+                            else:
+                                rag_name = "restaurant"
+
+                            if payload_op == "d":
+                                self.rag_data[rag_name].pop(payload_key, None)
+                                logging.info(f"Deleted {rag_name} for {payload_key}")
+
+                            else:
+                                # Main and Kids menu
+                                if rag_name in ["menu", "kidsmenu"]:
+                                    rag_value = payload_value
+                                # Extras, Policies, Restaurant and AI Rules
                                 else:
-                                    rag_name = "restaurant"
+                                    rag_value = payload_value["description"]
 
-                                if payload_op == "d":
-                                    self.rag_data[rag_name].pop(payload_key, None)
-                                    logging.info(f"Deleted {rag_name} for {payload_key}")
-
-                                else:
-                                    # Main and Kids menu
-                                    if rag_name in ["menu", "kidsmenu"]:
-                                        rag_value = payload_value
-                                    # Extras, Policies, Restaurant and AI Rules
-                                    else:
-                                        rag_value = payload_value["description"]
-
-                                    # Update Data
-                                    if rag_name not in self.rag_data.keys():
-                                        self.rag_data[rag_name] = dict()
-                                    self.rag_data[rag_name][payload_key] = rag_value
-                                    logging.info(
-                                        f"Loaded {rag_name} for {payload_key}: {rag_value}"
-                                    )
-                except Exception:
-                    logging.error(sys_exc(sys.exc_info()))
+                                # Update Data
+                                if rag_name not in self.rag_data.keys():
+                                    self.rag_data[rag_name] = dict()
+                                self.rag_data[rag_name][payload_key] = rag_value
+                                logging.info(
+                                    f"Loaded {rag_name} for {payload_key}: {rag_value}"
+                                )
+            except Exception:
+                logging.error(sys_exc(sys.exc_info()))
 
 
 #############
@@ -544,7 +526,7 @@ def adjust_html(
 
 
 def md5_hash(text: bytes) -> str:
-    #return int(hashlib.md5(text.encode("utf-8")).hexdigest(), 16)
+    # return int(hashlib.md5(text.encode("utf-8")).hexdigest(), 16)
     hash = hashlib.md5(text.encode("utf-8")).hexdigest()
     return f"{hash[:8]}-{hash[8:12]}-{hash[12:16]}-{hash[16:20]}-{hash[20:]}"
 

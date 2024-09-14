@@ -16,9 +16,6 @@ Qdrant, although has the [SaaS Cloud](https://qdrant.tech/documentation/cloud/) 
 ### Overview
 ![image](docs/demo_diagram.png)
 
-### Detailed view
-![image](docs/demo_diagram_details.png)
-
 ## Requirements
 - [curl](https://curl.se/)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
@@ -50,12 +47,14 @@ KAFKA_CONFIG="config/docker_host.ini"
 # DB Provisioning
 FLAG_FILE=".db_provisioning.flag"
 MD5_PASSWORD_SALT="<MD5_string_here>"           # String to be used to salt hash passwords
-CLIENT_DB_PROVISIONING="chatbot-db_provisioning-producer"
+CLIENT_DB_PROVISIONING="chatbot-db_provisioning"
 # Web App (Chatbot front-end)
 WEBAPP_HOST="0.0.0.0"
 WEBAPP_PORT=8888
 CLIENT_ID_WEBAPP="chatbot-webapp"
 TIMEOUT_SECONDS=120
+# Chatbot back-end
+CLIENT_ID_VDB="vdb-app"
 # Chatbot back-end
 CLIENT_ID_CHATBOT="chatbot-app"
 LLM_ENGINE="openai"                             # Options: openai (paid), groq (free), bedrock (AWS: paid)
@@ -142,10 +141,12 @@ Data will be automatically loaded into a Postgres DB by the python script `src/d
 A [Postgres CDC source connector](https://docs.confluent.io/cloud/current/connectors/cc-postgresql-cdc-source-v2-debezium/cc-postgresql-cdc-source-v2-debezium.html) will make sure to capture any change (insert, update, delete) and have them published to Confluent Platform.
 
 #### Chatbot back-end microservices
-In parallel to that the chatbot back-end microservices (python script `src/chatbot.py`) will start and perform the following tasks:
+In parallel to that the kafka2vDB microservice (python script `src/kafka2vDB.py`) will start and perform the following task:
+   - Run a Qdrant vector search engine, create a local collection (`chatbot_restaurant`), generate the embeddings (using sentence transformer `all-MiniLM-L6-v2`) and load add Vector DB data (as consumed from the corresponding topic) into it
+
+The chatbot back-end microservice (python script `src/chatbot.py`) will start and perform the following tasks:
  - Thread #1:
    - Load in memory the Customer Profiles, AI Rules, Restaurant Policies, Restaurant Information, Main Menu and Kids Menu (as consumed from the corresponding topics)
-   - Run a Qdrant vector search engine, create a local collection (`chatbot_restaurant`), generate the embeddings (using sentence transformer `all-MiniLM-L6-v2`) and load add Vector DB data (as consumed from the corresponding topic) into it
  - Thread #2:
    - Consume the customer messages from topic `chatbot-customer_actions` and post it to the LLM engine (as set on the environment variable `LLM_ENGINE`). It uses LangChain to be able to seemlesly interact with AWS BedRock, OpenAI or GroqCloud. All messages are buffered in memory per user session and cleared after logout. This can be optmised in order to reduce the number of tokens passed everything to the LLM engine
    - The initial LLM prompt will contain the name of the waiter/AI assistant, name/age of the customer as well as all AI Rules, Restaurant Policies, Restaurant Information, Main Menu and Kids Menu, for example:

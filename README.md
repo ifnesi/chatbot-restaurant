@@ -8,7 +8,7 @@ As GroqCloud is free to use the current LLM model used (`mixtral-8x7b-32768`) ha
 - Requests per day: 14,400
 - Tokens per minute: 18,000
 
-If you prefer, you can opt to use OpenAI but it is a paid service.
+If you prefer, you can opt to use OpenAI or AWS Bedrock but bear in mind they are paid services. To select the model, set `.env` accordingly (details below).
 
 Qdrant, although has the [SaaS Cloud](https://qdrant.tech/documentation/cloud/) option this demo uses the local/docker version (https://github.com/qdrant/qdrant-client) of it.
 

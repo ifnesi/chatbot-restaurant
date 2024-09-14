@@ -24,8 +24,8 @@ Qdrant, although has the [SaaS Cloud](https://qdrant.tech/documentation/cloud/) 
 This demo runs all on Docker and it was only tested on a MAC M1. In case needed change the platform option to your needs (see variable `PLATFORM` on the file `.env`). For example, if you have a macOS you need to set the environmental variable `PLATFORM` to `linux/amd64`.
 
 To be able to interact with AWS BedRock, OpenAI or Groq LLM model, you will need the following API key:
-* [AWS BedRock](https://aws.amazon.com/bedrock) paid LLM engine
 * [GroqCloud](https://console.groq.com) free LLM engine
+* [AWS BedRock](https://aws.amazon.com/bedrock) paid LLM engine
 * [OpenAI](https://platform.openai.com/docs/quickstart/account-setup) paid LLM engine
 
 **Important** If using AWS BedRock make sure to:

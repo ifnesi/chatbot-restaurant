@@ -59,7 +59,7 @@ curl -s http://connect:8083/connectors/postgres_cdc/status
 echo ""
 
 # Start microservices
-for ms in "db_provisioning.py" "kafka2vDB.py" "chatbot.py"; do
+for ms in "db_provisioning.py" "embeddings.py" "kafka2vDB.py" "chatbot.py"; do
   logging "Starting microservice $ms" "INFO" -n
   exec python $ms &
   while [ ! -f $FLAG_FILE ];  do

@@ -1,17 +1,17 @@
 import os
 import sys
+import json
 import logging
+import requests
 
 from dotenv import load_dotenv, find_dotenv
 
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
-from sentence_transformers import SentenceTransformer
 
 from utils import (
     VDB_COLLECTION,
     TOPIC_DB_EXTRAS,
-    SENTENCE_TRANSFORMER,
     KafkaClient,
     md5_hash,
     sys_exc,
@@ -47,10 +47,6 @@ if __name__ == "__main__":
         enable_auto_commit=True,
     )
 
-    # Load Sentence Transformer
-    logging.info(f"Loading sentence transformer, model: {SENTENCE_TRANSFORMER}")
-    VDB_MODEL = SentenceTransformer(SENTENCE_TRANSFORMER)
-
     # Qdrant (Vector-DB)
     logging.info("Loading VectorDB client (Qdrant)")
     VDB_CLIENT = QdrantClient(
@@ -68,8 +64,10 @@ if __name__ == "__main__":
         ),
     )
 
-    # Set flag here to allow time to load sentence transformer and create Vector DB collection
+    # Set flag here to allow time to create Vector DB collection
     set_flag(FLAG_FILE)
+
+    embedding_url = f"http://localhost:{os.environ.get('EMBEDDING_PORT')}{os.environ.get('EMBEDDING_PATH')}"
 
     for topic, _, _, value in kafka.avro_string_consumer(
         kafka.consumer,
@@ -94,18 +92,30 @@ if __name__ == "__main__":
                     )
 
                 else:
-                    sentence = f"{payload_key}: {payload_value['description']}"
-                    embeddings = VDB_MODEL.encode([sentence])
+                    # Generate vector Data
+                    response = requests.get(
+                        embedding_url,
+                        headers={
+                            "Content-Type": "text/plain; charset=UTF-8",
+                        },
+                        data=json.dumps(
+                            {
+                                payload_key: payload_value["description"],
+                            }
+                        ),
+                    )
+                    embeddings = response.json().get("embeddings", list())
+
                     # Upsert collection
                     logging.info(
-                        f"Upserting Vector DB collection {VDB_COLLECTION}: {id} | {sentence}"
+                        f"Upserting Vector DB collection {VDB_COLLECTION}: {id} | {payload_key}: {payload_value['description']}"
                     )
                     VDB_CLIENT.upsert(
                         collection_name=VDB_COLLECTION,
                         points=[
                             models.PointStruct(
                                 id=id,
-                                vector=embeddings[0],
+                                vector=embeddings,
                                 payload={
                                     "title": payload_key,
                                     "description": payload_value["description"],

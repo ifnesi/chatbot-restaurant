@@ -410,7 +410,7 @@ def flat_sql(
     env_vars: dict,
 ) -> list:
     result = data.replace("\r", "").replace("\n", " ").replace("\t", " ")
-    for var in set(re.findall("\$ENV\.([\w_-]*)", data)):
+    for var in set(re.findall(r"\$ENV\.([\w_-]*)", data)):
         result = result.replace(f"$ENV.{var}", env_vars.get(var, ""))
     while "  " in result:
         result = result.replace("  ", " ")

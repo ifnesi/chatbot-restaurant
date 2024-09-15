@@ -4,6 +4,7 @@ import json
 import time
 import boto3
 import logging
+import requests
 
 from dotenv import load_dotenv, find_dotenv
 from threading import Thread
@@ -14,7 +15,6 @@ from langchain.schema import SystemMessage, HumanMessage, AIMessage
 from langchain_community.callbacks.manager import get_openai_callback
 
 from qdrant_client import QdrantClient
-from sentence_transformers import SentenceTransformer
 
 from utils import (
     TOPIC_CUSTOMER_ACTIONS,
@@ -26,7 +26,6 @@ from utils import (
     TOPIC_DB_AI_RULES,
     TOPIC_DB_POLICIES,
     VDB_COLLECTION,
-    SENTENCE_TRANSFORMER,
     KafkaClient,
     SerializationContext,
     MessageField,
@@ -57,7 +56,6 @@ class LoadRAG:
     def __init__(
         self,
         vdb_client,
-        vdb_model,
         vdb_collection,
         topics: list = None,
     ) -> None:
@@ -65,7 +63,6 @@ class LoadRAG:
         self.customer_profile = dict()
         self.topics = topics
         self.vdb_client = vdb_client
-        self.vdb_model = vdb_model
         self.vdb_collection = vdb_collection
 
     def consumer(self, kafka) -> None:
@@ -162,10 +159,6 @@ if __name__ == "__main__":
     VECTOR_DB_MIN_SCORE = float(env_vars.get("VECTOR_DB_MIN_SCORE", 0.3))
     VECTOR_DB_SEARCH_LIMIT = int(env_vars.get("VECTOR_DB_SEARCH_LIMIT", 2))
 
-    # Load Sentence Transformer
-    logging.info(f"Loading sentence transformer, model: {SENTENCE_TRANSFORMER}")
-    VDB_MODEL = SentenceTransformer(SENTENCE_TRANSFORMER)
-
     # Qdrant (Vector-DB)
     logging.info("Loading VectorDB client (Qdrant)")
     VDB_CLIENT = QdrantClient(
@@ -173,13 +166,12 @@ if __name__ == "__main__":
         port=6333,
     )
 
-    # Set flag here to allow time to load sentence transformer
+    # Set flag here to allow time to connect to Qdrant
     set_flag(FLAG_FILE)
 
     # Class instance to load RAG data
     rag = LoadRAG(
         VDB_CLIENT,
-        VDB_MODEL,
         VDB_COLLECTION,
         topics=[
             TOPIC_DB_CUSTOMER_PROFILES,
@@ -206,7 +198,7 @@ if __name__ == "__main__":
     # Avro serialiser (for the response topic)
     kafka = KafkaClient(
         env_vars.get("KAFKA_CONFIG"),
-        env_vars.get('CLIENT_ID_CHATBOT'),
+        env_vars.get("CLIENT_ID_CHATBOT"),
         set_consumer=True,
         set_producer=True,
         auto_offset_reset="latest",
@@ -228,6 +220,8 @@ if __name__ == "__main__":
             aws_secret_access_key=":".join(AWS_SERVER_SECRET_KEY),
             region_name=env_vars.get("AWS_REGION"),
         )
+
+    embedding_url = f"http://localhost:{os.environ.get('EMBEDDING_PORT')}{os.environ.get('EMBEDDING_PATH')}"
 
     # Process messages submitted by the customers (Kafka consumer #2)
     for topic, headers, key, value in kafka.avro_string_consumer(
@@ -326,10 +320,20 @@ if __name__ == "__main__":
                         vdb_context = list()
 
                     if query:
-                        embeddings = VDB_MODEL.encode([query])
+                        # Generate vector Data
+                        response = requests.get(
+                            embedding_url,
+                            headers={
+                                "Content-Type": "text/plain; charset=UTF-8",
+                            },
+                            data=query,
+                        )
+                        embeddings = response.json().get("embeddings", list())
+
+                        # Query Vector DB
                         result_search = VDB_CLIENT.search(
                             collection_name=VDB_COLLECTION,
-                            query_vector=embeddings[0],
+                            query_vector=embeddings,
                             limit=VECTOR_DB_SEARCH_LIMIT,
                         )
                         for search in result_search:

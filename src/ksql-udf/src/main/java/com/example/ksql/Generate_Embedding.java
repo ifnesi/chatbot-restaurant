@@ -4,7 +4,6 @@ import io.confluent.ksql.function.udf.Udf;
 import io.confluent.ksql.function.udf.UdfDescription;
 import io.confluent.ksql.function.udf.UdfParameter;
 
-import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -12,13 +11,12 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.TimeUnit;
 
 @UdfDescription(
     name = "GENERATE_EMBEDDING",
     description = "Calls a REST API to generate embeddings from a given text input",
     author = "Italo Nesi",
-    version = "1.0"
+    version = "1.0.0"
 )
 public class Generate_Embedding {
 
@@ -28,31 +26,13 @@ public class Generate_Embedding {
     public String generate_embedding(
         @UdfParameter(value = "sentence", description = "Sentence") final String sentence
     ) {
-
-        try (CloseableHttpClient httpClient = HttpClients.custom()
-            .setConnectionTimeToLive(10, TimeUnit.SECONDS)
-            .build())
-        {
-
-            // Create the POST request
+        try (CloseableHttpClient client = HttpClients.createDefault()) {
             HttpPost request = new HttpPost(API_URL);
             request.setHeader("Content-Type", "text/plain");
-
-            // Set the request body (input text)
-            StringEntity entity = new StringEntity(sentence, StandardCharsets.UTF_8);
-            request.setEntity(entity);
-
-            // Execute the POST request
-            try (CloseableHttpResponse response = httpClient.execute(request)) {
-                String responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
-
-                // Return the full JSON response
-                return responseBody;
-            }
-
+            request.setEntity(new StringEntity(sentence, StandardCharsets.UTF_8));
+            return EntityUtils.toString(client.execute(request).getEntity());
         } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("Error calling embedding API", e);
+            throw new RuntimeException("Error calling GENERATE_EMBEDDING API", e);
         }
     }
 }

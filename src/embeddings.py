@@ -21,7 +21,7 @@ from utils import (
 app = FastAPI()
 
 
-@app.get("/api/v1/embedding/setence-transformer")
+@app.post("/api/v1/embedding/setence-transformer")
 async def embedding(request: Request):
     try:
         sentence = (await request.body()).decode("utf-8")

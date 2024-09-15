@@ -93,7 +93,7 @@ if __name__ == "__main__":
 
                 else:
                     # Generate vector Data
-                    response = requests.get(
+                    response = requests.post(
                         embedding_url,
                         headers={
                             "Content-Type": "text/plain; charset=UTF-8",

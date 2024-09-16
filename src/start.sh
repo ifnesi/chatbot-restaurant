@@ -60,6 +60,7 @@ echo ""
 
 # Start microservices
 for ms in "db_provisioning.py" "embeddings.py" "kafka2vDB.py" "chatbot.py"; do
+  rm $FLAG_FILE 2> /dev/null || true
   logging "Starting microservice $ms" "INFO" -n
   exec python $ms &
   while [ ! -f $FLAG_FILE ];  do

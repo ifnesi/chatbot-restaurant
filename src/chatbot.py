@@ -328,12 +328,12 @@ if __name__ == "__main__":
                             },
                             data=query,
                         )
-                        embeddings = response.json().get("embeddings", list())
+                        vector_data = response.json().get("vector_data", list())
 
                         # Query Vector DB
                         result_search = VDB_CLIENT.search(
                             collection_name=VDB_COLLECTION,
-                            query_vector=embeddings,
+                            query_vector=vector_data,
                             limit=VECTOR_DB_SEARCH_LIMIT,
                         )
                         for search in result_search:

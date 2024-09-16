@@ -1,10 +1,11 @@
 import os
 import sys
-import json
+import time
 import logging
 import requests
 
 from dotenv import load_dotenv, find_dotenv
+from requests.exceptions import ConnectionError, HTTPError, ConnectTimeout, RequestException
 
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
@@ -67,7 +68,24 @@ if __name__ == "__main__":
     # Set flag here to allow time to create Vector DB collection
     set_flag(FLAG_FILE)
 
-    embedding_url = f"http://localhost:{os.environ.get('EMBEDDING_PORT')}{os.environ.get('EMBEDDING_PATH')}"
+    rest_api_endpoint = f"http://localhost:{env_vars.get('EMBEDDING_PORT')}"
+    rest_api_endpoint_url = f"{rest_api_endpoint}{env_vars.get('EMBEDDING_PATH')}"
+
+    # Wait for REST API to be up and running
+    logging.info(f"Checking if REST API service is up: {rest_api_endpoint}")
+    while True:
+        try:
+            response = requests.get(
+                rest_api_endpoint,
+            )
+            if response.status_code == 200:
+                logging.info("REST API is up")
+                break
+        except (Exception, ConnectionError, HTTPError, ConnectTimeout, RequestException,):
+            pass
+        else:
+            logging.warning("Waiting for REST API service to be up...")
+            time.sleep(1)
 
     for topic, _, _, value in kafka.avro_string_consumer(
         kafka.consumer,
@@ -94,17 +112,13 @@ if __name__ == "__main__":
                 else:
                     # Generate vector Data
                     response = requests.post(
-                        embedding_url,
+                        rest_api_endpoint_url,
                         headers={
                             "Content-Type": "text/plain; charset=UTF-8",
                         },
-                        data=json.dumps(
-                            {
-                                payload_key: payload_value["description"],
-                            }
-                        ),
+                        data=f"{payload_key}: {payload_value.get('description', '')}",
                     )
-                    embeddings = response.json().get("embeddings", list())
+                    vector_data = response.json().get("vector_data", list())
 
                     # Upsert collection
                     logging.info(
@@ -115,7 +129,7 @@ if __name__ == "__main__":
                         points=[
                             models.PointStruct(
                                 id=id,
-                                vector=embeddings,
+                                vector=vector_data,
                                 payload={
                                     "title": payload_key,
                                     "description": payload_value["description"],

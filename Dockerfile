@@ -6,6 +6,7 @@ WORKDIR /src
 
 COPY src/requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install uvicorn[standard]
 
 COPY .env .
 COPY src/ .

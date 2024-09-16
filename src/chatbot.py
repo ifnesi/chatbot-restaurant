@@ -15,6 +15,7 @@ from langchain.schema import SystemMessage, HumanMessage, AIMessage
 from langchain_community.callbacks.manager import get_openai_callback
 
 from qdrant_client import QdrantClient
+from qdrant_client.http import models
 
 from utils import (
     TOPIC_CUSTOMER_ACTIONS,
@@ -164,6 +165,16 @@ if __name__ == "__main__":
     VDB_CLIENT = QdrantClient(
         host="qdrant",
         port=6333,
+    )
+
+    # # Create collection
+    logging.info(f"Creating VectorDB collection: {VDB_COLLECTION}")
+    VDB_CLIENT.create_collection(
+        collection_name=VDB_COLLECTION,
+        vectors_config=models.VectorParams(
+            size=384,
+            distance=models.Distance.COSINE,
+        ),
     )
 
     # Set flag here to allow time to connect to Qdrant

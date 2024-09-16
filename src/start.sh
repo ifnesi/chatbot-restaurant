@@ -38,8 +38,8 @@ do
     sleep 1
 done
 
-# Postgres Connector
-logging "Starting Postgres Connector"
+# Postgres Source Connector
+logging "Creating Postgres Source Connector"
 curl -i -X PUT http://connect:8083/connectors/postgres_cdc/config \
      -H "Content-Type: application/json" \
      -d '{
@@ -59,7 +59,7 @@ curl -s http://connect:8083/connectors/postgres_cdc/status
 echo ""
 
 # Start microservices
-for ms in "db_provisioning.py" "embeddings.py" "kafka2vDB.py" "chatbot.py"; do
+for ms in "db_provisioning.py" "embeddings.py" "chatbot.py"; do
   rm $FLAG_FILE 2> /dev/null || true
   logging "Starting microservice $ms" "INFO" -n
   exec python $ms &
@@ -71,5 +71,26 @@ for ms in "db_provisioning.py" "embeddings.py" "kafka2vDB.py" "chatbot.py"; do
   rm $FLAG_FILE
 done
 
+# Create ksqlDB Streams
+logging "Creating ksqlDB Streams" "INFO"
+./ksql_rest.sh
+
+# QDrant Sink Connector
+logging "Creating QDrant Sink Connector" "INFO"
+curl -i -X PUT http://connect2:8083/connectors/qdrant_sink/config \
+    -H "Content-Type: application/json" \
+    -d '{
+         "connector.class": "io.qdrant.kafka.QdrantSinkConnector",
+         "tasks.max": "1",
+         "qdrant.grpc.url": "http://qdrant:6334",
+         "qdrant.api.key": "",
+         "topics": "db.public.extras.vdb"
+       }'
+sleep 5
+echo ""
+curl -s http://connect2:8083/connectors/qdrant_sink/status
+echo ""
+
 # Start web application
+logging "Starting webapplication" "INFO"
 exec python webapp.py

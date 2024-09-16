@@ -526,7 +526,6 @@ def adjust_html(
 
 
 def md5_hash(text: bytes) -> str:
-    # return int(hashlib.md5(text.encode("utf-8")).hexdigest(), 16)
     hash = hashlib.md5(text.encode("utf-8")).hexdigest()
     return f"{hash[:8]}-{hash[8:12]}-{hash[12:16]}-{hash[16:20]}-{hash[20:]}"
 

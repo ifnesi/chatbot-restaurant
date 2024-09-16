@@ -8,7 +8,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.net.http.HttpHeaders;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -35,6 +34,7 @@ public class GetVectorData {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(apiUrl))
+                .version(HttpClient.Version.HTTP_1_1)
                 .header("Content-Type", "text/plain")
                 .POST(HttpRequest.BodyPublishers.ofString(sentence == null? "" : sentence, StandardCharsets.UTF_8))
                 .build();

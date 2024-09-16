@@ -91,6 +91,42 @@ services:
         /etc/confluent/docker/run & 
         sleep infinity
 
+  connect2:
+    image: cnfldemos/cp-server-connect-datagen:$CONFLUENT_DATAGEN_VERSION-$CONFLUENT_PLATFORM_VERSION
+    ports:
+      - 8084:8083
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: broker:9094
+      CONNECT_REST_PORT: 8083
+      CONNECT_GROUP_ID: connect2
+      CONNECT_CONFIG_STORAGE_TOPIC: connect2-configs
+      CONNECT_OFFSET_STORAGE_TOPIC: connect2-offsets
+      CONNECT_STATUS_STORAGE_TOPIC: connect2-status
+      CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_REST_ADVERTISED_HOST_NAME: connect2
+      CONNECT_LOG4J_ROOT_LOGLEVEL: INFO
+      CONNECT_LOG4J_LOGGERS: org.apache.kafka.connect.runtime.rest=WARN,org.reflections=ERROR
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components
+    depends_on:
+      - zookeeper
+      - broker
+      - schema-registry
+    command: 
+      - bash 
+      - -c 
+      - |
+        echo "Installing Connectors"
+        confluent-hub install --no-prompt qdrant/qdrant-kafka:$QDRANT_CONNECTOR_VERSION
+        echo "Launching Kafka Connect worker"
+        /etc/confluent/docker/run & 
+        sleep infinity
+
   control-center:
     image: confluentinc/cp-enterprise-control-center:$CONFLUENT_PLATFORM_VERSION
     hostname: control-center
@@ -108,6 +144,7 @@ services:
       CONTROL_CENTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
       CONTROL_CENTER_KSQL_KSQLDB1_ADVERTISED_URL: http://localhost:8088
       CONTROL_CENTER_CONNECT_CONNECT-CLUSTER_CLUSTER: http://connect:8083
+      CONTROL_CENTER_CONNECT_CONNECT2-CLUSTER_CLUSTER: http://connect2:8083
       CONTROL_CENTER_REPLICATION_FACTOR: 1
       CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS: 1
       CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: 1
@@ -157,6 +194,7 @@ services:
     container_name: qdrant
     ports:
       - 6333:6333
+      - 6334:6334
 
   # Chatbot FE/BE
   chatbot:

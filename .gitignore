@@ -8,7 +8,10 @@ __pycache__/
 src/.db_provisioning.flag
 pgadmin/*
 
+test/
 maven-archiver/
+archive-tmp/
+surefire-reports/
 classes/
 generated-sources/
 generated-test-sources/

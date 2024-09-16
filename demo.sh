@@ -73,7 +73,7 @@ if [ ! -f $ENV_VAR_FILE ]; then
     echo "# Embedding REST API"
     echo "EMBEDDING_HOST=\"0.0.0.0\""
     echo "EMBEDDING_PORT=9999"
-    echo "EMBEDDING_PATH=\"/api/v1/embedding/setence-transformer\""
+    echo "EMBEDDING_PATH=\"/api/v1/embedding/sentence-transformer\""
     echo "CLIENT_ID_EMBEDDING=\"chatbot-embeddings\""
     echo "# Web App (Chatbot front-end)"
     echo "WEBAPP_HOST=\"0.0.0.0\""

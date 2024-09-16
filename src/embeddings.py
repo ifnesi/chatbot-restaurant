@@ -1,4 +1,4 @@
-# Setence Transformer REST API
+# Sentence Transformer REST API
 import os
 import sys
 import uvicorn
@@ -6,6 +6,7 @@ import logging
 
 from dotenv import load_dotenv, find_dotenv
 from fastapi import Request, FastAPI
+from fastapi.responses import JSONResponse
 from sentence_transformers import SentenceTransformer
 
 from utils import (
@@ -21,18 +22,34 @@ from utils import (
 app = FastAPI()
 
 
-@app.post("/api/v1/embedding/setence-transformer")
+# Routing
+@app.get("/")
+async def root():
+    return "OK"
+
+@app.post("/api/v1/embedding/sentence-transformer")
 async def embedding(request: Request):
     try:
-        sentence = (await request.body()).decode("utf-8")
-        embeddings = VDB_MODEL.encode([sentence])[0].tolist()
-        logging.info(f"Vector data for '{sentence}': {embeddings}")
-        return {
-            "embeddings": embeddings,
-        }
-    except Exception:
+        sentence = ((await request.body()) or b"").decode("utf-8")
+        vector_data = VDB_MODEL.encode([sentence])[0].tolist()
+        if sentence:
+            logging.info(f"Vector data for '{sentence}': {vector_data}")
+        return JSONResponse(
+            status_code=200,
+            content={
+                "error": False,
+                "vector_data": vector_data,
+            }
+        )
+    except Exception as e:
         logging.error(sys_exc(sys.exc_info()))
-
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": True,
+                "message": str(e),
+            }
+        )
 
 if __name__ == "__main__":
     # Load env variables

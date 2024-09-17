@@ -1,19 +1,25 @@
+DEFINE COLLECTION_NAME = 'chatbot_restaurant';
+DEFINE URL_VDB = 'http://chatbot:9999/api/v1/embedding/sentence-transformer';
 CREATE STREAM `db_public_extras_vdb` WITH (
    KAFKA_TOPIC='db.public.extras.vdb',
    VALUE_FORMAT='JSON'
 ) AS
 SELECT
-	'chatbot_restaurant' AS `collection_name`,
+	'${COLLECTION_NAME}' AS `collection_name`,
+	HASH_MD5(
+		CASE
+			WHEN OP = 'd' THEN BEFORE->ID
+			ELSE AFTER->ID
+		END
+	) AS `id`,
+	TRANSFORM(JSON_ITEMS(EXTRACTJSONFIELD(GET_VECTOR_DATA('${URL_VDB}',
+		CASE
+			WHEN OP = 'd' THEN ''
+			ELSE AFTER->ID + ': ' + AFTER->DESCRIPTION
+		END
+	), '$.vector_data')), x => CAST(x AS DOUBLE)) AS `vector`,
 	CASE
-		WHEN OP = 'd' THEN HASH_MD5(BEFORE->ID)
-		ELSE HASH_MD5(AFTER->ID)
-	END AS `id`,
-	CASE
-		WHEN OP = 'd' THEN NULL
-		ELSE TRANSFORM(JSON_ITEMS(EXTRACTJSONFIELD(GET_VECTOR_DATA('http://chatbot:9999/api/v1/embedding/sentence-transformer', AFTER->ID + ': ' + AFTER->DESCRIPTION), '$.vector_data')), x => CAST(x AS DOUBLE))
-	END  AS `vector`,
-	CASE
-		WHEN OP = 'd' THEN NULL
+		WHEN OP = 'd' THEN MAP('title':= '', 'description':= '')
 		ELSE MAP('title':= AFTER->ID, 'description':= AFTER->DESCRIPTION)
 	END  AS `payload`
 FROM `db_public_extras`

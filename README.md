@@ -115,42 +115,53 @@ Options:
 
 To automatically start the demo, run `./demo.sh -x`, once the docker images are downloaded, it should take less than 2 minutes to have everything up and running.
 ```
-2024-03-22 17:17:02.000 [INFO]: Setting environment variables
-2024-03-22 17:17:02.000 [INFO]: Starting docker compose
-[+] Building 1.1s (12/12) FINISHEDdocker:desktop-linux
+2024-09-17 13:55:05.000 [INFO]: Setting environment variables
+2024-09-17 13:55:05.000 [INFO]: Starting docker compose
+[+] Building 1.3s (14/14) FINISHED
  => [chatbot internal] load build definition from Dockerfile
- => => transferring dockerfile: 282B
+ => => transferring dockerfile:
  => [chatbot internal] load metadata for docker.io/library/python:3.8-slim-buster
  => [chatbot internal] load .dockerignore
  => => transferring context: 2B
- => [chatbot 1/7] FROM docker.io/library/python:3.8-slim-buster@sha256:8799b0564103a9f36cfb8a8e1c562e11a9a6f2e3bb214e2adc23982b36a04511
+ => [chatbot 1/8] FROM docker.io/library/python:3.8-slim-buster@sha256:8799b0564103a9f36cfb8a8e1c562e11a9a6f2e3bb214e2adc23982b36a04511
  => [chatbot internal] load build context
- => => transferring context: 1.94kB
- => CACHED [chatbot 2/7] RUN apt-get update -y && apt-get install curl -y
- => CACHED [chatbot 3/7] WORKDIR /src
- => CACHED [chatbot 4/7] COPY src/requirements.txt requirements.txt
- => CACHED [chatbot 5/7] RUN pip install --no-cache-dir -r requirements.txt
- => CACHED [chatbot 6/7] COPY .env .
- => CACHED [chatbot 7/7] COPY src/ .
+ => => transferring context: 11.87kB
+ => CACHED [chatbot 2/8] RUN apt-get update -y && apt-get install curl -y
+ => CACHED [chatbot 3/8] WORKDIR /src
+ => CACHED [chatbot 4/8] COPY src/requirements.txt requirements.txt
+ => CACHED [chatbot 5/8] RUN pip install --no-cache-dir -r requirements.txt
+ => CACHED [chatbot 6/8] RUN pip install uvicorn[standard]
+ => CACHED [chatbot 7/8] COPY .env .
+ => CACHED [chatbot 8/8] COPY src/ .
  => [chatbot] exporting to image
  => => exporting layers
- => => writing image sha256:ad1b103d2f2eea3d21774c13794b2b76ae4de431f1c8e03b65c61677d8f83d6b
+ => => writing image sha256:ca90eae6821d4a40ab82af7cca1401e20529e2fc49288e71e2210612be564ea2
  => => naming to docker.io/library/chatbot-restaurant-chatbot
-[+] Running 5/6
- ⠧ Network chatbot-restaurant_default  Created
- ✔ Container zookeeper                 Started
- ✔ Container broker                    Started
- ✔ Container schema-registry           Started
- ✔ Container control-center            Started
- ✔ Container chatbot                   Started
+ => [chatbot] resolving provenance for metadata file
+[+] Running 13/13
+ ✔ Network chatbot-restaurant_default       Created
+ ✔ Container zookeeper                      Started
+ ✔ Container qdrant                         Started
+ ✔ Container broker                         Started
+ ✔ Container schema-registry                Started
+ ✔ Container chatbot-restaurant-connect2-1  Started
+ ✔ Container chatbot-restaurant-connect-1   Started
+ ✔ Container control-center                 Started
+ ✔ Container chatbot                        Started
+ ✔ Container ksqldb-server                  Started
+ ✔ Container postgres                       Started
+ ✔ Container ksqldb-cli                     Started
+ ✔ Container pgadmin                        Started
 
-2024-03-22 17:17:04.000 [INFO]: Waiting Schema Registry to be ready.........
-2024-03-22 17:17:14.000 [INFO]: Waiting Confluent Control Center to be ready.......
-2024-03-22 17:17:21.000 [INFO]: Waiting HTTP Server to be ready.
-2024-03-22 17:17:22.000 [INFO]: Demo environment is ready!
+2024-09-17 13:55:14.000 [INFO]: Waiting Schema Registry to be ready..............
+2024-09-17 13:55:28.000 [INFO]: Waiting Connect cluster to be ready........................
+2024-09-17 13:55:53.000 [INFO]: Waiting Confluent Control Center to be ready
+2024-09-17 13:55:53.000 [INFO]: Waiting Chatbot Web application to be ready................................................
+2024-09-17 13:56:42.000 [INFO]: Demo environment is ready!
 ```
 
 At the end of the start up script, it should open the following web pages:
+ - Qdrant Web UI: http://localhost:6333/dashboard#/collections
  - Confluent Control Center: http://localhost:9021
  - Chatbot Web application: http://localhost:8888
 
@@ -369,17 +380,24 @@ SELECT `QUERY`, TRANSFORM(JSON_ITEMS(GET_VECTOR_DATA('http://chatbot:9999/api/v1
 To stop the demo, please run `./demo.sh -p`.
 
 ```
-2024-03-22 17:29:07.000 [INFO]: Stopping docker compose
+2024-09-17 15:17:53.000 [INFO]: Stopping docker compose
 
-[+] Running 6/5
- ✔ Container chatbot                   Removed
- ✔ Container control-center            Removed
- ✔ Container schema-registry           Removed
- ✔ Container broker                    Removed
- ✔ Container zookeeper                 Removed
- ✔ Network chatbot-restaurant_default  Removed
+[+] Running 13/13
+ ✔ Container ksqldb-cli                     Removed
+ ✔ Container pgadmin                        Removed
+ ✔ Container chatbot-restaurant-connect2-1  Removed
+ ✔ Container ksqldb-server                  Removed
+ ✔ Container postgres                       Removed
+ ✔ Container chatbot                        Removed
+ ✔ Container qdrant                         Removed
+ ✔ Container control-center                 Removed
+ ✔ Container chatbot-restaurant-connect-1   Removed
+ ✔ Container schema-registry                Removed
+ ✔ Container broker                         Removed
+ ✔ Container zookeeper                      Removed
+ ✔ Network chatbot-restaurant_default       Removed
 
-2024-03-22 17:29:30.000 [INFO]: Demo successfully stopped
+2024-09-17 15:18:32.000 [INFO]: Demo successfully stopped
 ```
 
 ## Runtime Demo and Screenshots

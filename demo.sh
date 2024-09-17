@@ -143,6 +143,7 @@ echo ""
 logging "Demo environment is ready!"
 echo ""
 
-# Open browser with C3 and Chatbot Web application
+# Open browser with Qdrant UI, C3 and Chatbot Web application
+python3 -m webbrowser -t "http://$HOST:6333/dashboard#/collections"
 python3 -m webbrowser -t "http://$HOST:9021"
 python3 -m webbrowser -t "http://$HOST:8888/login"

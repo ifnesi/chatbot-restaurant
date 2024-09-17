@@ -346,18 +346,27 @@ if __name__ == "__main__":
                             collection_name=VDB_COLLECTION,
                             query_vector=vector_data,
                             limit=VECTOR_DB_SEARCH_LIMIT,
+                            # Filter out empty titles (as the Qdrant connector 1.1.0 doesn't handle deletes, then a delete have the title/description as empty strings)
+                            query_filter=models.Filter(
+                                must_not=[
+                                    models.FieldCondition(
+                                        key="title",
+                                        match=models.MatchValue(value=""),
+                                    )
+                                ]
+                            ),
                         )
                         for search in result_search:
                             if search.score >= VECTOR_DB_MIN_SCORE:
                                 if (
-                                    search.payload["title"]
+                                    search.payload.get("title")
                                     not in chatVectorDB[session_id]
                                 ):
                                     chatVectorDB[session_id].append(
-                                        search.payload["title"]
+                                        search.payload.get("title")
                                     )
                                     vdb_context.append(
-                                        f"{search.payload['title']}: {search.payload['description']}"
+                                        f"{search.payload.get('title')}: {search.payload.get('description')}"
                                     )
 
                         logging.info(f"Customer query (mid: {mid}): {query}")

@@ -5,7 +5,12 @@ import logging
 import requests
 
 from dotenv import load_dotenv, find_dotenv
-from requests.exceptions import ConnectionError, HTTPError, ConnectTimeout, RequestException
+from requests.exceptions import (
+    ConnectionError,
+    HTTPError,
+    ConnectTimeout,
+    RequestException,
+)
 
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
@@ -81,7 +86,13 @@ if __name__ == "__main__":
             if response.status_code == 200:
                 logging.info("REST API is up")
                 break
-        except (Exception, ConnectionError, HTTPError, ConnectTimeout, RequestException,):
+        except (
+            Exception,
+            ConnectionError,
+            HTTPError,
+            ConnectTimeout,
+            RequestException,
+        ):
             pass
         else:
             logging.warning("Waiting for REST API service to be up...")

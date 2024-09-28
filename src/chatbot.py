@@ -51,20 +51,16 @@ chatVectorDB = dict()
 ###########
 # Classes #
 ###########
-class LoadRAG:
+class LoadDBData:
     """Load RAG / Customer Profiles"""
 
     def __init__(
         self,
-        vdb_client,
-        vdb_collection,
         topics: list = None,
     ) -> None:
         self.rag = dict()
         self.customer_profile = dict()
         self.topics = topics
-        self.vdb_client = vdb_client
-        self.vdb_collection = vdb_collection
 
     def consumer(self, kafka) -> None:
         for topic, _, _, value in kafka.avro_string_consumer(
@@ -181,9 +177,7 @@ if __name__ == "__main__":
     set_flag(FLAG_FILE)
 
     # Class instance to load RAG data
-    rag = LoadRAG(
-        VDB_CLIENT,
-        VDB_COLLECTION,
+    rag = LoadDBData(
         topics=[
             TOPIC_DB_CUSTOMER_PROFILES,
             TOPIC_DB_AI_RULES,
@@ -347,6 +341,7 @@ if __name__ == "__main__":
                             query_vector=vector_data,
                             limit=VECTOR_DB_SEARCH_LIMIT,
                             # Filter out empty titles (as the Qdrant connector 1.1.0 doesn't handle deletes, then a delete have the title/description as empty strings)
+                            # Deletes have been addressed on Qdrant connector 1.1.2
                             query_filter=models.Filter(
                                 must_not=[
                                     models.FieldCondition(

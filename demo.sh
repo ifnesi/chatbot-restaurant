@@ -64,7 +64,7 @@ if [ ! -f $ENV_VAR_FILE ]; then
     echo "HOST=\"localhost\""
     echo "CONFLUENT_POSTGRES_CDC_VERSION=\"2.5.4\""
     echo "POSTGRESQL_VERSION=\"14\""
-    echo "QDRANT_CONNECTOR_VERSION=\"1.1.0\""
+    echo "QDRANT_CONNECTOR_VERSION=\"1.1.2\""
     echo "# Configuration files"
     echo "KAFKA_CONFIG=\"config/docker_host.ini\""
     echo "# DB Provisioning"

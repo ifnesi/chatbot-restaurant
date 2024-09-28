@@ -40,27 +40,24 @@ if __name__ == "__main__":
         file_app=FILE_APP,
     )
 
-    # Create customer actions topic
-    try:
-        kafka.create_topic(
-            TOPIC_CUSTOMER_ACTIONS,
-            cleanup_policy="delete",
-            sync=True,
-        )
-    except Exception:
-        logging.error(sys_exc(sys.exc_info()))
-        sys.exit(-1)
-
-    # Create chatbot responses topic
-    try:
-        kafka.create_topic(
-            TOPIC_CHATBOT_RESPONSES,
-            cleanup_policy="delete",
-            sync=True,
-        )
-    except Exception:
-        logging.error(sys_exc(sys.exc_info()))
-        sys.exit(-1)
+    # Create customer actions/responses topics and schemas
+    topics_schemas = {
+        TOPIC_CUSTOMER_ACTIONS: os.path.join("schemas", "customer_actions.avro"),
+        TOPIC_CHATBOT_RESPONSES: os.path.join("schemas", "chatbot_responses.avro"),
+    }
+    for topic, schema_file in topics_schemas.items():
+        try:
+            with open(schema_file, "r") as f:
+                # Create topic
+                kafka.create_topic(
+                    topic,
+                    cleanup_policy="delete",
+                    sync=True,
+                    schema_file=schema_file,
+                )
+        except Exception:
+            logging.error(sys_exc(sys.exc_info()))
+            sys.exit(-1)
 
     # Load data into postgres
     try:

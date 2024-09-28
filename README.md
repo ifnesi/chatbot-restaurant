@@ -22,19 +22,21 @@ In summary, the steps are:
    - Chatbot web application will consume the user profile table and have it in memory (event source pattern)
    - Chatbot backend will consume the user profile, AI rules, restaurant policies and information tables and have it in memory (event source pattern)
    - ksqlDB will consume the restaurant extra table (`db.public.extras`) and have it ingested as a stream
- - `04`: ksqlDB will submit a POST request to the REST API to get the vector data
+ - `04`: ksqlDB will submit a POST request to the REST API to get the vector data based on the postgres data
  - `05`: the restaurant extras topic will be transformed to the format as expected by the vector DB as well as have the embeddings appended to it (`db.public.extras.vdb`)
  - `06`: The Qdrant sink connector will consume the data from the transformed restaurant extras topic (`db.public.extras.vdb`)
  - `07`: The Qdrant sink connector will upsert the corresponding collection on the Qdrant vector DB
  - `A`: Customer logs in and submit a query/question
- - `B`: The chatbot web application produces the request to the Kafka topic `chatbot-customer_actions` (CQRS pattern)
- - `C`: The chatbot backend will consume the query/question (event) from the topic `chatbot-customer_actions`. If it is the initial message it will enrich the query/question with informations about the AI application, restaurant and customer
- - `D`: The chatbot backend will generate the vector data based on the query/question
- - `E`: The chatbot backend will query the VectorDB for any semantically similar document
- - `F`: In case any document is founf it will append to the query/question for additional context, and submit the prompt to the LLM
- - `G`: The response from the LLM is published to the Kafka topic `chatbot-chatbot_responses`
- - `H`: The chatbot webapplication consumes the response just published to the Kafka topic `chatbot-chatbot_responses` (matching it wil the session of the customer who asked it)
- - `I`: Response is send back to the customer
+ - `B`: The chatbot web application publishes the request to the Kafka topic `chatbot-customer_actions` (CQRS pattern)
+ - `C`: ksqlDB will ingest the message on the topic `chatbot-customer_actions`
+ - `D`: ksqlDB will submit a POST request to the REST API to get the vector data based on the customer query/question
+ - `E`: ksqlDB will add the vector data and publish a message to the topic `chatbot-customer_actions_embeddings`
+ - `F`: The chatbot backend will consume the query/question (event) from the topic `chatbot-customer_actions_embeddings`. If it is the initial message it will enrich the query/question with informations about the AI application, restaurant and customer
+ - `G`: The chatbot backend will query the VectorDB for any semantically similar document
+ - `H`: In case any document is founf it will append to the query/question for additional context, and submit the prompt to the LLM
+ - `I`: The response from the LLM is published to the Kafka topic `chatbot-chatbot_responses`
+ - `J`: The chatbot webapplication consumes the response just published to the Kafka topic `chatbot-chatbot_responses` (matching it wil the session of the customer who asked it)
+ - `K`: Response is sent back to the customer
 
 ## Requirements
 - [curl](https://curl.se/)

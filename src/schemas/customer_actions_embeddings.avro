@@ -1,0 +1,62 @@
+{
+    "name": "KsqlDataSourceSchema",
+    "namespace": "io.confluent.ksql.avro_schemas",
+    "connect.name": "io.confluent.ksql.avro_schemas.KsqlDataSourceSchema",
+    "type": "record",
+    "fields": [
+        {
+            "default": null,
+            "name": "username",
+            "type": [
+                "null",
+                "string"
+            ]
+        },
+        {
+            "default": null,
+            "name": "waiter_name",
+            "type": [
+                "null",
+                "string"
+            ]
+        },
+        {
+            "default": null,
+            "name": "context",
+            "type": [
+                "null",
+                "string"
+            ]
+        },
+        {
+            "default": null,
+            "name": "query",
+            "type": [
+                "null",
+                "string"
+            ]
+        },
+        {
+            "default": null,
+            "name": "mid",
+            "type": [
+                "null",
+                "long"
+            ]
+        },
+        {
+            "default": null,
+            "name": "vector",
+            "type": [
+                "null",
+                {
+                    "items": [
+                        "null",
+                        "double"
+                    ],
+                    "type": "array"
+                }
+            ]
+        }
+    ]
+}

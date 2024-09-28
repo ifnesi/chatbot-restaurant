@@ -21,6 +21,6 @@ SELECT
 	CASE
 		WHEN OP = 'd' THEN MAP('title':= '', 'description':= '')
 		ELSE MAP('title':= AFTER->ID, 'description':= AFTER->DESCRIPTION)
-	END  AS `payload`
+	END AS `payload`
 FROM `db_public_extras`
 EMIT CHANGES;

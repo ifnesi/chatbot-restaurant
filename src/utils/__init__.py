@@ -6,6 +6,7 @@ import time
 import signal
 import hashlib
 import logging
+import requests
 
 from queue import Queue
 from bs4 import BeautifulSoup
@@ -32,6 +33,7 @@ from confluent_kafka.schema_registry.avro import AvroSerializer, AvroDeserialize
 ####################
 TOPIC_LOGGING = "chatbot-logs"
 TOPIC_CUSTOMER_ACTIONS = "chatbot-customer_actions"
+TOPIC_CUSTOMER_ACTIONS_EMBEDDINGS = "chatbot-customer_actions_embeddings"
 TOPIC_CHATBOT_RESPONSES = "chatbot-chatbot_responses"
 TOPIC_DB_EXTRAS = "db.public.extras"
 TOPIC_DB_AI_RULES = "db.public.ai_rules"
@@ -239,6 +241,7 @@ class KafkaClient:
         cleanup_policy: str = "compact",
         sync: bool = False,
         timeout_seconds_sync: int = 30,
+        schema_file: str = None,
     ) -> None:
         if topic not in self.topic_list:
             logging.info(f"Creating topic '{topic}'")
@@ -267,6 +270,27 @@ class KafkaClient:
                     raise KafkaException(f"Unable to create topic '{topic}': Timeout")
         else:
             logging.info(f"Topic '{topic}' already exists")
+
+        if schema_file is not None:
+            with open(schema_file, "r") as f:
+                # Register new subject/schema
+                subject = f"{topic}-value"
+                logging.info(f"Creating subject 'subject'")
+                response = requests.post(
+                    f"http://schema-registry:8081/subjects/subject/versions",
+                    headers={
+                        "Accept": "application/vnd.schemaregistry.v1+json, application/vnd.schemaregistry+json, application/json",
+                    },
+                    json={
+                        "schema": json.dumps(json.loads(f.read()))
+                    },
+                )
+                if response.status_code == 200:
+                    log_level = logging.info
+                else:
+                    log_level = logging.error
+                log_level(f"HTTP Status Code: {response.status_code}")
+                log_level(f"Response: {response.json()}")
 
     def avro_string_consumer(
         self,

@@ -27,6 +27,7 @@ app = FastAPI()
 async def root():
     return "OK"
 
+
 @app.post("/api/v1/embedding/sentence-transformer")
 async def embedding(request: Request):
     try:
@@ -39,7 +40,7 @@ async def embedding(request: Request):
             content={
                 "error": False,
                 "vector_data": vector_data,
-            }
+            },
         )
     except Exception as e:
         logging.error(sys_exc(sys.exc_info()))
@@ -48,8 +49,9 @@ async def embedding(request: Request):
             content={
                 "error": True,
                 "message": str(e),
-            }
+            },
         )
+
 
 if __name__ == "__main__":
     # Load env variables

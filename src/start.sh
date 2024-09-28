@@ -12,6 +12,18 @@ function logging() {
   fi
 }
 
+function start_ms() {
+  rm $FLAG_FILE 2> /dev/null || true
+  logging "Starting microservice $1" "INFO" -n
+  exec python $1 &
+  while [ ! -f $FLAG_FILE ];  do
+      echo -n "."
+      sleep 1
+  done
+  echo ""
+  rm $FLAG_FILE
+}
+
 source .env
 
 # Waiting services to be ready
@@ -58,22 +70,18 @@ echo ""
 curl -s http://connect:8083/connectors/postgres_cdc/status
 echo ""
 
-# Start microservices
-for ms in "db_provisioning.py" "embeddings.py" "chatbot.py"; do
-  rm $FLAG_FILE 2> /dev/null || true
-  logging "Starting microservice $ms" "INFO" -n
-  exec python $ms &
-  while [ ! -f $FLAG_FILE ];  do
-      echo -n "."
-      sleep 1
-  done
-  echo ""
-  rm $FLAG_FILE
-done
+# Start DB Provisioning service
+start_ms "db_provisioning.py"
+
+# Start Embeddings REST API
+start_ms "embeddings.py"
 
 # Create ksqlDB Streams
 logging "Creating ksqlDB Streams" "INFO"
 ./ksql_rest.sh
+
+# Start Chatbot service
+start_ms "chatbot.py"
 
 # QDrant Sink Connector
 logging "Creating QDrant Sink Connector" "INFO"

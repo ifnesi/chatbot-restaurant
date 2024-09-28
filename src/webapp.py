@@ -443,7 +443,7 @@ if __name__ == "__main__":
         auto_offset_reset="latest",
         enable_auto_commit=True,
     )
-    with open(os.path.join("schemas", "customer_message.avro"), "r") as f:
+    with open(os.path.join("schemas", "customer_actions_embeddings.avro"), "r") as f:
         schema_str = f.read()
     customer_action_serialiser = kafka.avro_serialiser(schema_str)
 

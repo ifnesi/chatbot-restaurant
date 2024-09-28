@@ -1,5 +1,5 @@
 {
-    "name": "customer_message",
+    "name": "customer_actions",
     "namespace": "streambite.example.com",
     "type": "record",
     "doc": "Message submitted by the customers via the Chatbot (session_id is the message key)",

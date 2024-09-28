@@ -1,5 +1,5 @@
 {
-    "name": "chatbot_response",
+    "name": "chatbot_responses",
     "namespace": "streambite.example.com",
     "type": "record",
     "doc": "Response by the LLM Model (session_id is the message key)",
